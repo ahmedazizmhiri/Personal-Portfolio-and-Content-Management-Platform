@@ -225,11 +225,20 @@ export type ResumeContent = StaticResumeAsset & {
   sortOrder: number;
 };
 
+export type SocialLinkGroup = "primary" | "freelance";
+
 export type SocialLinkContent = {
+  slug: string;
   label: string;
   url: string;
   iconKey?: string;
+  iconUrl?: string;
+  group: SocialLinkGroup;
+  showInContact: boolean;
+  showInFooter: boolean;
+  includeInSameAs: boolean;
   sortOrder: number;
+  published: boolean;
 };
 
 export type PortfolioContent = {
@@ -258,7 +267,10 @@ export type PortfolioContent = {
   };
 };
 
-export type PortfolioChromeContent = Pick<PortfolioContent, "profile" | "navLinks">;
+export type PortfolioChromeContent = Pick<
+  PortfolioContent,
+  "profile" | "navLinks" | "socialLinks"
+>;
 
 export type CmsTableName =
   | "profile"

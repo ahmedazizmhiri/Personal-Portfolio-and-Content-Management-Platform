@@ -2,15 +2,24 @@ import type {
   CertificationContent,
   ProfileContent,
   ProjectContent,
+  SocialLinkContent,
 } from "@/lib/cms-types";
+import {
+  createProfileSocialLinkFallback,
+  getSocialSameAsLinks,
+} from "@/lib/social-links";
 import { siteSeo } from "@/lib/seo/config";
 import { absoluteUrl, resolveMediaUrl } from "@/lib/seo/urls";
 
-export const personSchema = (profile: ProfileContent) => {
+export const personSchema = (
+  profile: ProfileContent,
+  socialLinks: readonly SocialLinkContent[] =
+    createProfileSocialLinkFallback(profile),
+) => {
   const knowsAbout = profile.aboutFocus
     .map((topic) => topic.trim())
     .filter(Boolean);
-
+const sameAs = getSocialSameAsLinks(socialLinks);
   return {
     "@type": "Person",
     "@id": `${siteSeo.url}/#person`,
@@ -22,8 +31,7 @@ export const personSchema = (profile: ProfileContent) => {
     ...(profile.shortProfile
       ? { description: profile.shortProfile }
       : {}),
-    sameAs: [profile.linkedIn, profile.github].filter(Boolean),
-    ...(profile.location
+...(sameAs.length > 0 ? { sameAs } : {}),    ...(profile.location
       ? {
           homeLocation: {
             "@type": "Place",

@@ -53,8 +53,10 @@ export default async function Home() {
             certifications={content.certifications}
           />
           <ResumeSection preview resumes={content.resumes} />
-          <Contact profile={content.profile} />
-        </>
+<Contact
+  profile={content.profile}
+  socialLinks={content.socialLinks}
+/>        </>
       )}
     </main>
   );

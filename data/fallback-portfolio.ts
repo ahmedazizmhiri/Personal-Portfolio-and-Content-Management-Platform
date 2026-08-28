@@ -4,6 +4,7 @@ import {
   profile,
 } from "@/constants/portfolio";
 import type { PortfolioContent } from "@/lib/cms-types";
+import { createProfileSocialLinkFallback } from "@/lib/social-links";
 
 /**
  * Repository fallback content is intentionally small. It keeps the public shell
@@ -46,7 +47,7 @@ export const fallbackPortfolioContent: PortfolioContent = {
   education: [],
   certifications: [],
   resumes: [],
-  socialLinks: [],
+  socialLinks: createProfileSocialLinkFallback(fallbackProfile),
   pages: [],
   volunteering: [],
   navLinks: primaryNavigation,

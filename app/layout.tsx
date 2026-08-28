@@ -41,12 +41,21 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           gtmId={gtmId}
           clarityProjectId={clarityProjectId}
         >
-          <JsonLd data={[websiteSchema(), personSchema(content.profile)]} />
+          <JsonLd
+  data={[
+    websiteSchema(),
+    personSchema(content.profile, content.socialLinks),
+  ]}
+/>
           <DeferredStarBackground />
           <ImageFallbackController />
           <Navbar profile={content.profile} navLinks={content.navLinks} />
           {children}
-          <Footer profile={content.profile} navLinks={content.navLinks} />
+          <Footer
+  profile={content.profile}
+  navLinks={content.navLinks}
+  socialLinks={content.socialLinks}
+/>
           <DeferredAnalytics enabled={analyticsEnabled} />
         </AnalyticsConsentProvider>
       </body>

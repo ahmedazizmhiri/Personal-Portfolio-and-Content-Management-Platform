@@ -37,8 +37,10 @@ export default async function ContactPage() {
           />
         </div>
         <CmsPageSections content={content} pageKey="contact" />
-        <Contact profile={content.profile} />
-      </main>
+<Contact
+  profile={content.profile}
+  socialLinks={content.socialLinks}
+/>      </main>
     );
   }
 
@@ -67,7 +69,9 @@ export default async function ContactPage() {
           { href: "/resume", label: "Open resume options" },
         ]}
       />
-      <Contact profile={content.profile} />
-    </main>
+<Contact
+  profile={content.profile}
+  socialLinks={content.socialLinks}
+/>    </main>
   );
 }

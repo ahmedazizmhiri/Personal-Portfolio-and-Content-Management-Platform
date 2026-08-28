@@ -382,18 +382,90 @@ const sections: Section[] = [
       { key: "published", label: "Published", kind: "checkbox" },
     ],
   },
-  {
-    table: "social_links",
-    label: "Social links",
-    description: "LinkedIn, GitHub, email and future profiles.",
-    fields: [
-      { key: "label", label: "Label", required: true },
-      { key: "url", label: "URL", kind: "external-url", required: true },
-      { key: "icon_key", label: "Icon key" },
-      { key: "sort_order", label: "Sort order", kind: "number" },
-      { key: "published", label: "Published", kind: "checkbox" },
-    ],
-  },
+{
+  table: "social_links",
+  label: "Social links",
+  description:
+    "CMS-driven professional, freelance and external profiles. New platforms can be added without code changes.",
+  fields: [
+    {
+      key: "label",
+      label: "Label",
+      required: true,
+      placeholder: "Upwork",
+    },
+    {
+      key: "slug",
+      label: "Slug",
+      required: true,
+      placeholder: "upwork",
+      helpText:
+        "Stable lowercase identifier used for analytics and rendering.",
+      example: "linkedin, github, malt, upwork, tableau-public",
+    },
+    {
+      key: "url",
+      label: "URL",
+      kind: "external-url",
+      required: true,
+      placeholder: "https://example.com/profile",
+    },
+    {
+      key: "link_group",
+      label: "Link group",
+      kind: "select",
+      required: true,
+      options: [
+        { label: "Primary", value: "primary" },
+        { label: "Freelance", value: "freelance" },
+      ],
+    },
+    {
+      key: "icon_key",
+      label: "Icon key",
+      placeholder: "github",
+      helpText:
+        "Optional built-in icon key. Unknown keys automatically use a generic link icon.",
+    },
+    {
+      key: "icon_url",
+      label: "Custom icon",
+      kind: "asset-image",
+      bucket: "public-assets",
+      accept: imageAccept,
+      allowedMimeTypes: imageMimeTypes,
+      helpText:
+        "Optional CMS-managed icon. This takes priority over Icon key.",
+    },
+    {
+      key: "show_in_contact",
+      label: "Show in Contact",
+      kind: "checkbox",
+    },
+    {
+      key: "show_in_footer",
+      label: "Show in Footer",
+      kind: "checkbox",
+    },
+    {
+      key: "include_in_same_as",
+      label: "Include in SEO sameAs",
+      kind: "checkbox",
+      helpText:
+        "Include this HTTPS professional profile in the Person structured-data identity graph.",
+    },
+    {
+      key: "sort_order",
+      label: "Sort order",
+      kind: "number",
+    },
+    {
+      key: "published",
+      label: "Published",
+      kind: "checkbox",
+    },
+  ],
+},
   {
     table: "pages", label: "Page settings", description: "Page titles, publication and search/social preview information.",
     fields: [
@@ -462,17 +534,29 @@ const emptyRow = (section: Section): Row => {
           : "",
   ]));
 
-  if (section.table === "projects") row.status = "draft";
-  if (
-    section.table === "project_sections" ||
-    section.table === "page_sections"
-  ) {
-    row.section_type = "rich_text";
-    row.layout_variant = "default";
-    row.is_visible = true;
-    row.is_archived = false;
-  }
-  return row;
+if (section.table === "projects") {
+  row.status = "draft";
+}
+
+if (section.table === "social_links") {
+  row.link_group = "primary";
+  row.show_in_contact = true;
+  row.show_in_footer = true;
+  row.include_in_same_as = false;
+  row.published = true;
+}
+
+if (
+  section.table === "project_sections" ||
+  section.table === "page_sections"
+) {
+  row.section_type = "rich_text";
+  row.layout_variant = "default";
+  row.is_visible = true;
+  row.is_archived = false;
+}
+
+return row;
 };
 const normalizeEditorRow = (section: Section, source: Row): Row => {
   const normalized: Row = { ...source };

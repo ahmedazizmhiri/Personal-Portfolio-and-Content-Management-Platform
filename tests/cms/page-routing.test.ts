@@ -96,8 +96,8 @@ describe("canonical CMS page routing", () => {
       "utf8",
     );
 
-    expect(source).toMatch(
-      /<CmsPageSections[\s\S]*?<Contact profile=\{content\.profile\}/,
-    );
+expect(source).toMatch(
+  /<CmsPageSections[\s\S]*?<Contact[\s\S]*?profile=\{content\.profile\}[\s\S]*?socialLinks=\{content\.socialLinks\}[\s\S]*?\/>/,
+);
   });
 });

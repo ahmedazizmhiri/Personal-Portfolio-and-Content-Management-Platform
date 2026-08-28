@@ -48,9 +48,20 @@ skills: [
     ...common, "label", "variant", "pdf_url", "docx_url", "sort_order",
     "published",
   ],
-  social_links: [
-    ...common, "label", "url", "icon_key", "sort_order", "published",
-  ],
+social_links: [
+  ...common,
+  "slug",
+  "label",
+  "url",
+  "link_group",
+  "icon_key",
+  "icon_url",
+  "show_in_contact",
+  "show_in_footer",
+  "include_in_same_as",
+  "sort_order",
+  "published",
+],
   pages: [
     ...common, "page_key", "title", "slug", "seo_title", "seo_description",
     "open_graph_title", "open_graph_description", "open_graph_image",

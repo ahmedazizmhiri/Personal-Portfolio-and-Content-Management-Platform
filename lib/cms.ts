@@ -27,6 +27,7 @@ import type {
 } from "@/lib/cms-types";
 import { createVolunteeringFooterLink } from "@/lib/navigation";
 import { isPublicResume } from "@/lib/resume-policy";
+import { createProfileSocialLinkFallback } from "@/lib/social-links";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseAdminConfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabasePublicClient } from "@/lib/supabase/server";
@@ -103,7 +104,8 @@ const publicColumns = {
   certifications:
     "id,name,issuer,date,credential_url,credential_id,image_url,description,tags,sort_order,published,updated_at",
   resumes: "id,label,variant,pdf_url,docx_url,sort_order,published,updated_at",
-  socialLinks: "id,label,url,icon_key,sort_order,published,updated_at",
+  socialLinks:
+    "id,slug,label,url,link_group,icon_key,icon_url,show_in_contact,show_in_footer,include_in_same_as,sort_order,published,updated_at",
   pages:
     "id,page_key,title,slug,seo_title,seo_description,open_graph_title,open_graph_description,open_graph_image,navigation_label,navigation_order,show_in_navigation,show_in_footer,is_published,updated_at",
   pageSections:
@@ -596,6 +598,25 @@ const loadCareerRows = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: ["public-cms-career"] },
 );
 
+const loadSocialLinkRows = unstable_cache(
+  async () => {
+    const supabase = createSupabasePublicClient();
+    return readPublicRows(
+      "CMS-PUBLIC-SOCIAL-LINKS-READ",
+      supabase
+        .from("social_links")
+        .select(publicColumns.socialLinks)
+        .eq("published", true)
+        .order("sort_order", { ascending: true }),
+    );
+  },
+  ["public-cms-social-links-v1"],
+  {
+    revalidate: PUBLIC_REVALIDATE_SECONDS,
+    tags: ["public-cms-social-links", "public-cms-secondary"],
+  },
+);
+
 const loadSecondaryRows = unstable_cache(
   async () => {
     const supabase = createSupabasePublicClient();
@@ -617,14 +638,7 @@ const loadSecondaryRows = unstable_cache(
             .eq("published", true)
             .order("sort_order", { ascending: true }),
         ),
-        readPublicRows(
-          "CMS-PUBLIC-SOCIAL-LINKS-READ",
-          supabase
-            .from("social_links")
-            .select(publicColumns.socialLinks)
-            .eq("published", true)
-            .order("sort_order", { ascending: true }),
-        ),
+        loadSocialLinkRows(),
         readPublicRows(
           "CMS-PUBLIC-VOLUNTEERING-READ",
           supabase
@@ -643,7 +657,7 @@ const loadSecondaryRows = unstable_cache(
 
     return { certifications, resumes, socialLinks, volunteering };
   },
-  ["public-cms-secondary-v3"],
+  ["public-cms-secondary-v4"],
   { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: ["public-cms-secondary"] },
 );
 
@@ -674,6 +688,29 @@ const mapProfile = (result: PublicQueryResult): PortfolioContent["profile"] => {
     about: readText(row.about_text),
     aboutFocus: readStringArray(row.about_focus),
   };
+};
+
+const mapSocialLinks = (
+  result: PublicQueryResult,
+  profile: PortfolioContent["profile"],
+): PortfolioContent["socialLinks"] => {
+  if (!result.ok) return createProfileSocialLinkFallback(profile);
+
+  return sortByOrder(result.rows).map((row, index) => ({
+    slug: readText(row.slug),
+    label: readText(row.label),
+    url: readText(row.url),
+    iconKey: readText(row.icon_key) || undefined,
+    iconUrl: normalizeCmsAssetPath(row.icon_url) || undefined,
+    group: readText(row.link_group) === "freelance"
+      ? "freelance"
+      : "primary",
+    showInContact: readBoolean(row.show_in_contact, true),
+    showInFooter: readBoolean(row.show_in_footer, true),
+    includeInSameAs: readBoolean(row.include_in_same_as, false),
+    sortOrder: Number(row.sort_order ?? index),
+    published: readBoolean(row.published, true),
+  }));
 };
 
 const mapHero = (
@@ -1054,27 +1091,32 @@ const getPortfolioChromeContentImpl =
       return {
         profile: fallbackPortfolioContent.profile,
         navLinks: primaryNavigation,
+        socialLinks: fallbackPortfolioContent.socialLinks,
       };
     }
     if (!isSupabaseConfigured()) {
       return {
         profile: fallbackPortfolioContent.profile,
         navLinks: primaryNavigation,
+        socialLinks: fallbackPortfolioContent.socialLinks,
       };
     }
 
-    const [profile, navigation] = await Promise.all([
+    const [profileResult, navigation, socialLinkResult] = await Promise.all([
       loadProfileRows(),
       loadNavigationRows(),
+      loadSocialLinkRows(),
     ]);
+    const profile = mapProfile(profileResult);
     return {
-      profile: mapProfile(profile),
+      profile,
       navLinks: navigation.pages.ok
         ? mapCmsNavigation(
             navigation.pages.rows,
             navigation.pageSections.ok ? navigation.pageSections.rows : [],
           )
         : primaryNavigation,
+      socialLinks: mapSocialLinks(socialLinkResult, profile),
     };
   };
 
@@ -1315,14 +1357,7 @@ sortByOrder(career.skills.rows).forEach((row) => {
     })),
     certifications,
     resumes,
-    socialLinks: sortByOrder(secondary.socialLinks.rows).map(
-      (row, index) => ({
-        label: readText(row.label),
-        url: readText(row.url),
-        iconKey: readText(row.icon_key) || undefined,
-        sortOrder: Number(row.sort_order ?? index),
-      }),
-    ),
+    socialLinks: mapSocialLinks(secondary.socialLinks, profile),
     pages: mapPages(
       presentation.pages.rows,
       presentation.pageSections.rows,

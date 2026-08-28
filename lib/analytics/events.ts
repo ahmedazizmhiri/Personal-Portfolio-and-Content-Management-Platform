@@ -3,6 +3,7 @@ import {
   isProductionAnalyticsLocation,
   isPublicAnalyticsPath,
 } from "@/lib/analytics/consent";
+import type { SocialLinkGroup } from "@/lib/cms-types";
 import type { PublicResumeVariant } from "@/lib/resume-policy";
 
 export type VirtualPageViewEvent = {
@@ -72,8 +73,14 @@ export type AnalyticsEvent =
     }
   | {
       event: "profile_link_click";
-      platform: "linkedin" | "github";
+      platform: string;
       link_location: "navbar" | "footer" | "contact" | "about" | "hero";
+    }
+  | {
+      event: "social_profile_click";
+      platform: string;
+      link_group: SocialLinkGroup;
+      link_location: "contact" | "footer";
     }
   | {
       event: "email_contact_click";

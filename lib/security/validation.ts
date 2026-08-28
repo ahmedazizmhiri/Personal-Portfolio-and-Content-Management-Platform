@@ -316,8 +316,29 @@ const cmsRowSchemas: Record<EditableCmsTable, z.ZodType<Record<string, unknown>>
   education: z.object({ ...base, institution: requiredText(), degree: requiredText(), start_date: optionalText(), end_date: optionalText(), status: optionalText(), location: optionalText(), sort_order: sortOrder, published }),
   certifications: z.object({ ...base, name: requiredText(), issuer: optionalText(), date: optionalText(), credential_url: externalLink, credential_id: optionalText(), image_url: assetLink, description: optionalText(5000), tags: stringList, sort_order: sortOrder, published }),
   resumes: z.object({ ...base, label: requiredText(), variant: requiredText(), pdf_url: assetLink, docx_url: assetLink, sort_order: sortOrder, published }),
-  social_links: z.object({ ...base, label: requiredText(), url: socialLink.refine((value) => Boolean(value), "URL is required."), icon_key: optionalText(), sort_order: sortOrder, published }),
-  pages: z.object({ ...base, page_key: requiredText(100).regex(/^[a-z0-9-]+$/), title: requiredText(), slug: requiredText(300), seo_title: optionalText(), seo_description: optionalText(5000), open_graph_title: optionalText(), open_graph_description: optionalText(5000), open_graph_image: assetLink, navigation_label: optionalText(100), navigation_order: sortOrder, show_in_navigation: z.boolean().optional().default(false), show_in_footer: z.boolean().optional().default(false), is_published: z.boolean().optional().default(true) }),
+social_links: z.object({
+  ...base,
+  slug: requiredText(100).regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    "Use a lowercase URL-safe slug such as linkedin, upwork or tableau-public.",
+  ),
+  label: requiredText(),
+  url: socialLink.refine(
+    (value) => Boolean(value),
+    "URL is required.",
+  ),
+  link_group: z
+    .enum(["primary", "freelance"])
+    .optional()
+    .default("primary"),
+  icon_key: optionalText(100),
+  icon_url: assetLink,
+  show_in_contact: z.boolean().optional().default(true),
+  show_in_footer: z.boolean().optional().default(true),
+  include_in_same_as: z.boolean().optional().default(false),
+  sort_order: sortOrder,
+  published,
+}),  pages: z.object({ ...base, page_key: requiredText(100).regex(/^[a-z0-9-]+$/), title: requiredText(), slug: requiredText(300), seo_title: optionalText(), seo_description: optionalText(5000), open_graph_title: optionalText(), open_graph_description: optionalText(5000), open_graph_image: assetLink, navigation_label: optionalText(100), navigation_order: sortOrder, show_in_navigation: z.boolean().optional().default(false), show_in_footer: z.boolean().optional().default(false), is_published: z.boolean().optional().default(true) }),
   page_sections: z.object({ ...base, page_id: z.string().uuid(), section_key: requiredText(100).regex(/^[a-z0-9-]+$/), section_type: z.enum(cmsBlockTypes), title: optionalText(), subtitle: optionalText(), description: optionalText(20000), cta_label: optionalText(), cta_href: siteLink, secondary_cta_label: optionalText(), secondary_cta_href: siteLink, display_order: sortOrder, is_visible: z.boolean().optional().default(true), is_archived: z.boolean().optional().default(false), layout_variant: z.enum(cmsLayoutVariants).optional().default("default") }).superRefine((value, context) => {
     if (!variantsForBlock(value.section_type).includes(value.layout_variant)) {
       context.addIssue({
