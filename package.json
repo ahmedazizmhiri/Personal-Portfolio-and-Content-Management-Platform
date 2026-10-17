@@ -81,7 +81,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.12",
     "lighthouse": "^13.4.1",
-    "postcss": "8.5.23",
+    "postcss": "8.5.25",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
