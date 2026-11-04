@@ -100,12 +100,14 @@ export const createFirebaseServerClient = async (_request?: Request) => {
     },
     signInWithOAuth: async (input: { provider: string; options: { redirectTo: string } }) => {
       try {
-        const clientId = process.env.FIREBASE_GITHUB_CLIENT_ID?.trim();
-        if (!clientId || !process.env.FIREBASE_GITHUB_CLIENT_SECRET) throw Object.assign(new Error("GitHub provider is not configured."), { code: "validation_failed" });
-        const state = randomBytes(32).toString("base64url");
-        cookieStore.set("aam_firebase_oauth", JSON.stringify({ state, redirectTo: input.options.redirectTo }), { ...firebaseCookieOptions, maxAge: 600 });
-        const url = new URL("https://github.com/login/oauth/authorize");
-        url.searchParams.set("client_id", clientId); url.searchParams.set("redirect_uri", `${getAppUrl()}/auth/callback`); url.searchParams.set("scope", "read:user user:email"); url.searchParams.set("state", state);
+        if (input.provider !== "github") throw new Error("Unsupported identity provider.");
+        const result = await firebaseAuthRequest<{ authUri: string; sessionId: string }>("accounts:createAuthUri", {
+          providerId: "github.com", continueUri: `${getAppUrl()}/auth/callback`, oauthScope: "read:user user:email", sessionId: randomBytes(32).toString("base64url"),
+        });
+        const url = new URL(result.authUri);
+        const state = url.searchParams.get("state");
+        if (url.protocol !== "https:" || url.hostname !== "github.com" || !state || !result.sessionId) throw new Error("Invalid GitHub authorization response.");
+        cookieStore.set("aam_firebase_oauth", JSON.stringify({ state, sessionId: result.sessionId, redirectTo: input.options.redirectTo }), { ...firebaseCookieOptions, maxAge: 600 });
         return { data: { url: url.toString() }, error: null };
       } catch (error) { return { data: { url: null }, error: authError(error) }; }
     },
@@ -115,10 +117,10 @@ export const createFirebaseServerClient = async (_request?: Request) => {
         cookieStore.set("aam_firebase_oauth", "", { ...firebaseCookieOptions, maxAge: 0 });
         const received = Buffer.from(state ?? ""), expected = Buffer.from(stored.state ?? "");
         if (!received.length || received.length !== expected.length || !timingSafeEqual(received, expected)) throw new Error("OAuth state mismatch.");
-        const response = await fetch("https://github.com/login/oauth/access_token", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ client_id: process.env.FIREBASE_GITHUB_CLIENT_ID, client_secret: process.env.FIREBASE_GITHUB_CLIENT_SECRET, code, redirect_uri: `${getAppUrl()}/auth/callback` }), cache: "no-store", signal: AbortSignal.timeout(10000) });
-        const token = await response.json();
-        if (!response.ok || !token.access_token) throw new Error("OAuth exchange failed.");
-        const result = await firebaseAuthRequest<{ idToken: string }>("accounts:signInWithIdp", { postBody: new URLSearchParams({ access_token: token.access_token, providerId: "github.com" }).toString(), requestUri: `${getAppUrl()}/auth/callback`, returnSecureToken: true });
+        if (!stored.sessionId) throw new Error("OAuth session is missing.");
+        const callback = new URL(`${getAppUrl()}/auth/callback`);
+        callback.searchParams.set("code", code); callback.searchParams.set("state", state!);
+        const result = await firebaseAuthRequest<{ idToken: string }>("accounts:signInWithIdp", { sessionId: stored.sessionId, requestUri: callback.toString(), returnSecureToken: true, autoCreate: false });
         return { data: { user: await establishSession(result.idToken), next: new URL(stored.redirectTo).searchParams.get("next") }, error: null };
       } catch (error) { return { data: null, error: authError(error) }; }
     },
