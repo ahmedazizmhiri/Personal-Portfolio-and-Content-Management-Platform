@@ -49,7 +49,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": "^20.9.0 || >=22.0.0"
+    "node": "24.x"
   },
   "dependencies": {
     "@google-cloud/firestore": "^9.4.0",
@@ -105,6 +105,9 @@
     },
     "postcss": "$postcss",
     "sharp": "0.35.5",
-    "sucrase": "3.35.1"
+    "sucrase": "3.35.1",
+    "jwks-rsa": {
+      "jose": "5.10.0"
+    }
   }
 }
