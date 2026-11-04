@@ -37,12 +37,12 @@ vi.mock("@/lib/security/rate-limit", () => ({
   rateLimitResponse: () => Response.json({}, { status: 429 }),
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
-  isSupabaseAdminConfigured: () => true,
+vi.mock("@/lib/firebase/config", () => ({
+  isFirebaseAdminConfigured: () => true,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     from: (table: string) => {
       if (table !== "uploads") {
         const referenceQuery = {
@@ -119,7 +119,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const id = "87f06b62-2e8c-4a1e-b0ee-330f59676520";
 const publicUrl =
-  "https://project.supabase.co/storage/v1/object/public/project-images/admin/asset.webp";
+  "https://project.firebase.co/storage/v1/object/public/project-images/admin/asset.webp";
 
 const uploadRow = (
   status: UploadRow["deletion_status"],

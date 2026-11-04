@@ -66,6 +66,7 @@ const sortUploads = (uploads: UploadRecord[]) => [...uploads].sort((left, right)
 export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploads, setUploads] = useState(() => sortUploads(initialUploads));
+  const [storageEnabled, setStorageEnabled] = useState(false);
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [bucket, setBucket] = useState<UploadBucket>("public-assets");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -85,7 +86,8 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
           setStatus(adminApiError(data));
           return;
         }
-        setUploads(sortUploads(parseUploads(data.uploads)));
+          setUploads(sortUploads(parseUploads(data.uploads)));
+          setStorageEnabled(data.storageEnabled === true);
         setStatus("");
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
@@ -261,7 +263,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
         ))}
       </div>
 
-      <form onSubmit={upload} className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+      {storageEnabled ? <form onSubmit={upload} className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4">
         <div className="grid gap-4 lg:grid-cols-[13rem_1fr_auto] lg:items-end">
           <label className="grid gap-2 text-sm text-gray-300">
             <span>Storage bucket</span>
@@ -290,7 +292,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
           </button>
         </div>
         <p className="mt-3 text-xs text-gray-500">Accepted: JPG, PNG, WebP, PDF and DOCX, up to 10 MB. Choose the bucket that matches how the file will be used.</p>
-      </form>
+      </form> : <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-gray-300">Assets are served with the site. Choose an existing file below, or add new files to the project&apos;s public directory and redeploy.</p>}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filter Media Library">
@@ -350,7 +352,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Bucket:</dt><dd className="min-w-0 truncate font-mono" title={asset.bucket}>{asset.bucket}</dd></div>
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Type:</dt><dd className="min-w-0 truncate" title={asset.mime_type ?? undefined}>{asset.mime_type ?? "Unknown"}</dd></div>
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Size:</dt><dd>{formatBytes(asset.size_bytes)}</dd></div>
-                  <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Source:</dt><dd>{isBuiltIn ? "Built-in file" : "Supabase Storage"}</dd></div>
+                  <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Source:</dt><dd>{isBuiltIn ? "Built-in file" : "Firebase Storage"}</dd></div>
                   {!isBuiltIn && deletionStatus !== "active" && (
                     <div className="flex gap-2">
                       <dt className="shrink-0 text-gray-500">Deletion:</dt>

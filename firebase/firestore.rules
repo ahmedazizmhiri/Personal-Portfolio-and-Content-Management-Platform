@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The Next.js server handles public projection and all authorized writes.
+    // Browser access must never bypass MFA, CSRF, or publication checks.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

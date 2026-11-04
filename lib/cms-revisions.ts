@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 import {
   type EditableCmsTable,
   validateCmsRow,
@@ -47,8 +47,8 @@ export const writeCmsRevision = async (input: {
 }) => {
   const previousValues = sanitizeRevisionValues(input.table, input.previous);
   const nextValues = sanitizeRevisionValues(input.table, input.next);
-  const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from("cms_content_revisions").insert({
+  const firebase = createFirebaseAdminClient();
+  const { error } = await firebase.from("cms_content_revisions").insert({
     actor_user_id: input.actorUserId,
     table_name: input.table,
     record_id: input.recordId,

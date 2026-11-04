@@ -220,7 +220,7 @@ analyticsEvent={{
             alt={`Cover image for ${project.title}`}
             fill
             sizes="(min-width: 1024px) 960px, 100vw"
-            className="object-cover opacity-90"
+            className={`${project.image.startsWith("/companies/") || project.image === "/logo.png" ? "object-contain p-8" : "object-cover"} opacity-90`}
             data-image-fallback="swap"
             data-fallback-src="/projects/project-1.png"
           />
@@ -467,7 +467,7 @@ function ProjectMediaGallery({
                 alt={item.altText || "Project evidence"}
                 fill
                 sizes="(min-width: 768px) 460px, 100vw"
-                className="object-cover"
+                className={item.mediaUrl.startsWith("/companies/") || item.mediaUrl === "/logo.png" ? "object-contain p-5" : "object-cover"}
                 data-image-fallback="swap"
                 data-fallback-src="/projects/project-1.png"
               />

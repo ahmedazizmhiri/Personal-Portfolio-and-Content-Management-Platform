@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 import { hmacSha256Hex } from "@/lib/security/crypto";
 import { jsonError } from "@/lib/security/http";
 
@@ -114,7 +114,7 @@ export const consumeRateLimit = async ({
     return unavailable();
   }
 
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return process.env.NODE_ENV === "production"
       ? unavailable()
       : developmentRateLimit(
@@ -125,8 +125,8 @@ export const consumeRateLimit = async ({
   }
 
   try {
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase.rpc("consume_rate_limit", {
+    const firebase = createFirebaseAdminClient();
+    const { data, error } = await firebase.rpc("consume_rate_limit", {
       p_scope: normalizedScope,
       p_key_hash: hmacSha256Hex(material, secret),
       p_limit: boundedLimit,

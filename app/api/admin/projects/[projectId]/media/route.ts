@@ -26,7 +26,7 @@ import {
   projectMediaUpdateSchema,
 } from "@/lib/projects/project-media-validation";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 
 export const dynamic =
   "force-dynamic";
@@ -169,11 +169,11 @@ const parseMutation = (
 const revalidateMedia = async (
   projectId: string,
 ) => {
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   const project =
-    await supabase
+    await firebase
       .from("projects")
       .select("slug")
       .eq(
@@ -374,11 +374,11 @@ const executeMutation =
           .expectedUpdatedAt;
     }
 
-    const supabase =
-      createSupabaseAdminClient();
+    const firebase =
+      createFirebaseAdminClient();
 
     const result =
-      await supabase.rpc(
+      await firebase.rpc(
         "mutate_project_media",
         {
           p_action:

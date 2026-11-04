@@ -62,7 +62,7 @@ describe("upload deletion lifecycle", () => {
 
   it("recognizes configured Storage-shaped URLs but leaves legacy paths alone", () => {
     expect(parsePublicStorageReference(
-      "https://project.supabase.co/storage/v1/object/public/project-images/admin%20id/asset.webp",
+      "https://project.firebase.co/storage/v1/object/public/project-images/admin%20id/asset.webp",
     )).toEqual({
       bucket: "project-images",
       path: "admin id/asset.webp",
@@ -83,10 +83,10 @@ describe("upload deletion lifecycle", () => {
       bucket: "project-images",
       path: "admin/asset.webp",
       publicUrl:
-        "https://project.supabase.co/storage/v1/object/public/project-images/admin/asset.webp",
+        "https://project.firebase.co/storage/v1/object/public/project-images/admin/asset.webp",
     })).toEqual([
       "admin/asset.webp",
-      "https://project.supabase.co/storage/v1/object/public/project-images/admin/asset.webp",
+      "https://project.firebase.co/storage/v1/object/public/project-images/admin/asset.webp",
       "/storage/v1/object/public/project-images/admin/asset.webp",
     ]);
   });

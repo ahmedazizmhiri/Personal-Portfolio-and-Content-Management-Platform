@@ -11,7 +11,7 @@ import {
   rateLimitResponse,
 } from "@/lib/security/rate-limit";
 import { safeRedirect } from "@/lib/security/redirects";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -51,10 +51,10 @@ export async function POST(request: Request) {
       return jsonError("Request origin is not allowed.", 403, "origin_not_allowed");
     }
 
-    const supabase = await createSupabaseServerClient();
+    const firebase = await createFirebaseServerClient();
     const callback = new URL("/auth/callback", origin);
     callback.searchParams.set("next", next);
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await firebase.auth.signInWithOAuth({
       provider: "github",
       options: { redirectTo: callback.toString() },
     });
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       "GitHub login could not be started.",
       500,
       message.includes("environment variables")
-        ? "supabase_config"
+        ? "firebase_config"
         : "github",
     );
   }

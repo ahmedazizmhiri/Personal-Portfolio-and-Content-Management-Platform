@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured, requireAdminMfa } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured, requireAdminMfa } from "@/lib/firebase/config";
 import {
   clearRememberDeviceCookie,
   getMfaContext,
@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     return rateLimitResponse(limited);
   }
 
-  if (!isSupabaseAdminConfigured()) {
-    return jsonError("Supabase service role is not configured.", 503);
+  if (!isFirebaseAdminConfigured()) {
+    return jsonError("Firebase Admin SDK is not configured.", 503);
   }
 
   const parsed = mfaPreferenceSchema.safeParse(await request.json());
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return jsonError("Invalid security preferences.", 400);
   }
 
-  const current = await getMfaContext(admin.supabase, admin.user.id, request);
+  const current = await getMfaContext(admin.firebase, admin.user.id, request);
   if (current.mfaRequired && !parsed.data.mfaRequired && !current.mfaSatisfied) {
     return jsonError("Verify MFA before disabling MFA requirement.", 403);
   }
@@ -81,8 +81,8 @@ export async function POST(request: Request) {
     }
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { error } = await supabase.from("admin_security_preferences").upsert({
+  const firebase = createFirebaseAdminClient();
+  const { error } = await firebase.from("admin_security_preferences").upsert({
     user_id: admin.user.id,
     mfa_required: requireAdminMfa() ? true : parsed.data.mfaRequired,
     remember_device_enabled: parsed.data.rememberDeviceEnabled,

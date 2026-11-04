@@ -8,8 +8,8 @@ const state = vi.hoisted(() => ({
   audit: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
-  isSupabaseAdminConfigured: () => true,
+vi.mock("@/lib/firebase/config", () => ({
+  isFirebaseAdminConfigured: () => true,
 }));
 
 vi.mock("@/lib/security/http", () => ({
@@ -45,8 +45,8 @@ vi.mock("@/lib/security/admin-auth", () => ({
   writeAdminAudit: state.audit,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     from: () => ({
       insert: state.insert,
     }),

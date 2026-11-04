@@ -5,8 +5,8 @@ import { assetUrlSchema } from "@/lib/security/validation";
 describe("internal CMS URL validation", () => {
   beforeEach(() => {
     vi.stubEnv(
-      "NEXT_PUBLIC_SUPABASE_URL",
-      "https://portfolio-test.supabase.co",
+      "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+      "demo-portfolio.firebasestorage.app",
     );
   });
 
@@ -28,7 +28,7 @@ describe("internal CMS URL validation", () => {
   it.each([
     "/projects/commercial-analytics",
     "/assets/report.webp",
-    "https://portfolio-test.supabase.co/storage/v1/object/public/public-assets/report.webp",
+    "https://firebasestorage.googleapis.com/v0/b/demo-portfolio.firebasestorage.app/o/public-assets%2Freport.webp?alt=media",
     "",
   ])("accepts safe asset URL %s", (value) => {
     expect(assetUrlSchema.safeParse(value).success).toBe(true);

@@ -69,12 +69,12 @@ vi.mock("@/lib/cms", () => ({
   getAdminContentSnapshot: async () => ({}),
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
-  isSupabaseAdminConfigured: () => true,
+vi.mock("@/lib/firebase/config", () => ({
+  isFirebaseAdminConfigured: () => true,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => {
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => {
     state.databaseCalls += 1;
     return {
       rpc: async (name: string, args: Record<string, unknown>) => {

@@ -8,7 +8,7 @@ export async function GET() {
     `Owner: ${profile.name || "Ahmed Aziz Mhiri"}`,
     "Purpose: Marketing & Commercial Analytics, Big Data, AI and Digital Transformation portfolio",
     `Availability: ${profile.availability}`,
-    "Technology: Next.js, TypeScript, Supabase, Vercel",
+    "Technology: Next.js, TypeScript, Firebase, Vercel",
     ...(profile.linkedIn ? [`LinkedIn: ${profile.linkedIn}`] : []),
     ...(profile.github ? [`GitHub: ${profile.github}`] : []),
     "",

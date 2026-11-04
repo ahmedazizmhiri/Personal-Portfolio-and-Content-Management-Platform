@@ -16,17 +16,17 @@ vi.mock("next/cache", () => ({
   unstable_cache: (loader: () => unknown) => loader,
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
-  isSupabaseAdminConfigured: () => false,
-  isSupabaseConfigured: () => true,
+vi.mock("@/lib/firebase/config", () => ({
+  isFirebaseAdminConfigured: () => false,
+  isFirebaseConfigured: () => true,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: vi.fn(),
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabasePublicClient: () => ({
+vi.mock("@/lib/firebase/server", () => ({
+  createFirebasePublicClient: () => ({
     from: (table: string) => ({
       select: () => {
         const filters: Array<[string, unknown]> = [];
@@ -87,7 +87,7 @@ vi.mock("@/lib/supabase/server", () => ({
       },
     }),
   }),
-  createSupabaseServerClient: vi.fn(),
+  createFirebaseServerClient: vi.fn(),
 }));
 
 describe("public CMS publication boundary", () => {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 
 export type ContactNotification = {
   id: string;
@@ -33,8 +33,8 @@ const recordFailure = async (
   code: string,
   attempt: number,
 ) => {
-  const supabase = createSupabaseAdminClient();
-  const result = await supabase
+  const firebase = createFirebaseAdminClient();
+  const result = await firebase
     .from("contact_messages")
     .update({
       delivery_status: "failed",
@@ -58,9 +58,9 @@ export const deliverContactNotification = async (
   const apiKey = process.env.RESEND_API_KEY?.trim() ?? "";
   const to = process.env.CONTACT_NOTIFICATION_TO?.trim() ?? "";
   const from = process.env.CONTACT_NOTIFICATION_FROM?.trim() ?? "";
-  const supabase = createSupabaseAdminClient();
+  const firebase = createFirebaseAdminClient();
 
-  const existing = await supabase
+  const existing = await firebase
     .from("contact_messages")
     .select("delivery_attempts,delivery_status,last_delivery_attempt_at")
     .eq("id", message.id)
@@ -96,7 +96,7 @@ export const deliverContactNotification = async (
   const attempt = previousAttempt + 1;
   const attemptStartedAt = new Date().toISOString();
 
-  let claim = supabase
+  let claim = firebase
     .from("contact_messages")
     .update({
       delivery_status: "sending",
@@ -180,7 +180,7 @@ export const deliverContactNotification = async (
       };
     }
 
-    const recorded = await supabase
+    const recorded = await firebase
       .from("contact_messages")
       .update({
         delivery_status: "sent",

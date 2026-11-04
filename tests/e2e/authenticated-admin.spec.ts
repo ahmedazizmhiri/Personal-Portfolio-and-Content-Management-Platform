@@ -1,31 +1,21 @@
 import AxeBuilder from "@axe-core/playwright";
-import { createClient } from "@supabase/supabase-js";
+import { initializeApp, applicationDefault, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import { expect, test } from "@playwright/test";
 import type { APIRequestContext } from "@playwright/test";
 
-const productionProjectRef =
-  process.env.PRODUCTION_SUPABASE_PROJECT_REF ?? "";
+const productionProjectRef = process.env.PRODUCTION_FIREBASE_PROJECT_ID ?? "portfolio-cb36f";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "";
 const storageState = process.env.E2E_ADMIN_STORAGE_STATE ?? "";
-const supabaseUrl = process.env.E2E_TEST_SUPABASE_URL ?? "";
-const serviceRoleKey = process.env.E2E_TEST_SUPABASE_SERVICE_ROLE_KEY ?? "";
-const projectRef = (() => {
-  try {
-    return new URL(supabaseUrl).hostname.split(".")[0] ?? "";
-  } catch {
-    return "";
-  }
-})();
-const isolated =
-  Boolean(baseURL && storageState && supabaseUrl && serviceRoleKey)
-  && Boolean(productionProjectRef)
-  && projectRef !== productionProjectRef
+const firebaseProjectId = process.env.E2E_FIREBASE_PROJECT_ID ?? "";
+const isolated = Boolean(baseURL && storageState && firebaseProjectId)
+  && firebaseProjectId !== productionProjectRef
   && process.env.ALLOW_E2E_DATABASE_MUTATIONS === "true";
 
 test.describe("authenticated CMS lifecycle in an isolated project", () => {
   test.skip(
     !isolated,
-    "Requires an AAL2 admin storage state and an explicitly mutation-enabled non-production Supabase project.",
+    "Requires an AAL2 admin storage state and an explicitly mutation-enabled non-production Firebase project.",
   );
   test.use({
     storageState: storageState || { cookies: [], origins: [] },
@@ -290,16 +280,10 @@ test.describe("authenticated CMS lifecycle in an isolated project", () => {
       "pending",
     );
 
-    const service = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+    const app = getApps().find((app) => app.name === "e2e") ?? initializeApp({ projectId: firebaseProjectId, credential: applicationDefault() }, "e2e");
+    await getFirestore(app).collection("uploads").doc(upload.id).update({
+      deletion_requested_at: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
     });
-    const stale = await service
-      .from("uploads")
-      .update({
-        deletion_requested_at: new Date(Date.now() - 6 * 60 * 1_000).toISOString(),
-      })
-      .eq("id", upload.id);
-    expect(stale.error).toBeNull();
 
     const deletedResponse = await request.delete("/api/admin/upload", {
       headers,

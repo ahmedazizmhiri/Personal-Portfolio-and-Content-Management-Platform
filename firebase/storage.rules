@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /public-assets/{path=**} { allow get: if true; }
+    match /project-images/{path=**} { allow get: if true; }
+    match /resumes/{path=**} { allow get: if true; }
+    // Private uploads are downloaded using short-lived, server-signed URLs.
+    match /{path=**} { allow list, write: if false; }
+  }
+}

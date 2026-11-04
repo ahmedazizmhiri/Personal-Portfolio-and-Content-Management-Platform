@@ -11,6 +11,7 @@ type DeviceRow = {
   last_user_agent_hash: string | null;
   last_network_context_hash: string | null;
   expires_at: string;
+  created_at?: string;
   revoked_at: string | null;
   revocation_reason?: string | null;
   last_used_at?: string;
@@ -36,21 +37,21 @@ const matches = (
     && actual > value;
 });
 
-vi.mock("@/lib/supabase/config", () => ({
+vi.mock("@/lib/firebase/config", () => ({
   adminDeviceHmacSecret: () => "remembered-device-test-secret-material",
   adminMfaRememberDays: () => 10,
-  isSupabaseAdminConfigured: () => true,
+  isFirebaseAdminConfigured: () => true,
   requireAdminDeviceHmacSecret: () =>
     "remembered-device-test-secret-material",
   requireAdminMfa: () => true,
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: vi.fn(),
+vi.mock("@/lib/firebase/server", () => ({
+  createFirebaseServerClient: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     from: (table: string) => {
       if (table === "admin_audit_logs") {
         return {
@@ -232,6 +233,20 @@ describe("remembered-device verification behavior", () => {
         "chrome:windows:desktop",
       ),
     });
+  });
+
+  it.each([
+    ["before password reset", "2026-11-04T10:00:00.000Z", false],
+    ["during password reset", "2026-11-04T12:00:00.900Z", false],
+    ["after password reset", "2026-11-04T12:00:01.000Z", true],
+    ["with a missing creation date", undefined, false],
+  ])("checks remembered devices %s against the Firebase auth epoch", async (_label, createdAt, accepted) => {
+    if (state.row) state.row.created_at = createdAt;
+    const { validateRememberedDeviceToken } = await import("@/lib/security/admin-auth");
+    await expect(validateRememberedDeviceToken(
+      "admin-user", "valid-token", requestFor(), "2026-11-04T12:00:00.000Z",
+    )).resolves.toBe(accepted);
+    expect(state.updates).toHaveLength(accepted ? 1 : 0);
   });
 
   it.each([

@@ -47,3 +47,11 @@ next-env.d.ts
 node_modules
 supabase/.branches
 supabase/.temp
+
+# Firebase local state and emulator logs
+.firebase/
+*-debug.log
+*-debug.log.*
+firestore-debug.log
+ui-debug.log
+firebase-service-account*.json

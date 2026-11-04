@@ -1,7 +1,8 @@
 import { EnvelopeIcon, LinkIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import type { ComponentType, SVGProps } from "react";
-import { FaGithub, FaLinkedinIn } from "react-icons/fa6";
+import { FaGithub, FaLinkedinIn, FaUpwork } from "react-icons/fa6";
+import { SiMalt } from "react-icons/si";
 
 import type { SocialLinkContent } from "@/lib/cms-types";
 import { getSafeSocialIconUrl } from "@/lib/social-links";
@@ -12,6 +13,8 @@ const localSocialIcons: Readonly<Record<string, SocialIconComponent>> = {
   email: EnvelopeIcon,
   github: FaGithub,
   linkedin: FaLinkedinIn,
+  upwork: FaUpwork,
+  malt: SiMalt,
 };
 
 type SocialLinkIconProps = Pick<SocialLinkContent, "iconKey" | "iconUrl"> & {

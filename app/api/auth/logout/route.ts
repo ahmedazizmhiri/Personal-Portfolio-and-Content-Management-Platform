@@ -23,7 +23,7 @@ import {
   rateLimitResponse,
 } from "@/lib/security/rate-limit";
 import { safeRedirect } from "@/lib/security/redirects";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -71,8 +71,8 @@ export async function POST(request: Request) {
     revocationFailed = true;
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error: signOutError } = await supabase.auth.signOut({
+  const firebase = await createFirebaseServerClient();
+  const { error: signOutError } = await firebase.auth.signOut({
     scope: allDevices || revocationFailed ? "global" : "local",
   });
 

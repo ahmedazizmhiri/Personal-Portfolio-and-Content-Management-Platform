@@ -1136,7 +1136,7 @@ export const AdminDashboard = ({
       blockType,
       definition: cmsBlockRegistry[blockType],
     };
-  }, [active?.table, draft.section_type]);
+  }, [active, draft.section_type]);
   const stats = useMemo(() => ({
     skills: records.skills?.length ?? 0,
     projects: records.projects?.length ?? 0,
@@ -1184,7 +1184,9 @@ export const AdminDashboard = ({
       if (!stopped) void refreshMessages();
     };
 
-    void refreshMessages(true);
+    queueMicrotask(() => {
+      if (!stopped) void refreshMessages(true);
+    });
     const intervalId = window.setInterval(refreshFromServer, 30_000);
     const handleFocus = () => refreshFromServer();
     const handleVisibilityChange = () => {

@@ -26,10 +26,10 @@ const createRepositoryFixture = (portfolioSource = "") => {
   return directory;
 };
 
-const withoutSupabase = () => {
+const withoutFirebase = () => {
   const environment = { ...process.env };
-  delete environment.NEXT_PUBLIC_SUPABASE_URL;
-  delete environment.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  delete environment.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  delete environment.CONTENT_AUDIT_FIXTURE_URL;
   return environment;
 };
 
@@ -158,8 +158,8 @@ const runConfiguredAudit = (
     cwd: directory,
     env: {
       ...process.env,
-      NEXT_PUBLIC_SUPABASE_URL: url,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "fixture-anon-key",
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: "",
+      CONTENT_AUDIT_FIXTURE_URL: url,
     },
   });
   let output = "";
@@ -179,7 +179,7 @@ afterEach(() => {
 });
 
 describe("Wave 1 content audit", () => {
-  it("checks deprecated public CV filenames without Supabase", () => {
+  it("checks deprecated public CV filenames without Firebase", () => {
     const directory = createRepositoryFixture();
     writeFileSync(join(directory, "public/cv/Ahmed_CV_ATS.pdf"), "fixture");
     writeFileSync(
@@ -189,7 +189,7 @@ describe("Wave 1 content audit", () => {
 
     const result = spawnSync(process.execPath, [auditScript], {
       cwd: directory,
-      env: withoutSupabase(),
+      env: withoutFirebase(),
       encoding: "utf8",
     });
     const output = `${result.stdout}${result.stderr}`;
@@ -199,7 +199,7 @@ describe("Wave 1 content audit", () => {
     expect(output).toContain(
       "Ahmed_CV_Canadian.docx is a deprecated public CV asset",
     );
-    expect(output).toContain("Supabase is not configured");
+    expect(output).toContain("Firebase is not configured");
   });
 
   it("accepts exactly one fully backed EN, FR and IT row", async () => {

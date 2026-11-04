@@ -3,8 +3,8 @@ import { requireAdminApi, writeAdminAudit } from "@/lib/security/admin-auth";
 import { clientIp, jsonError, jsonOk } from "@/lib/security/http";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
 import { adminProfileSettingsSchema } from "@/lib/security/validation";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +38,12 @@ const safeProfile = (value: unknown): AdminProfileSettings => {
 export async function GET(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true, sameOrigin: false });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const firebase = createFirebaseAdminClient();
+  const { data, error } = await firebase
     .from("site_settings")
     .select("value")
     .eq("key", settingsKey(admin.user.id))
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -83,14 +83,14 @@ export async function POST(request: Request) {
 
   const key = settingsKey(admin.user.id);
   const value = { ...parsed.data, public: false as const };
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const firebase = createFirebaseAdminClient();
+  const { data, error } = await firebase
     .from("site_settings")
     .upsert({ key, value }, { onConflict: "key" })
     .select("value")
     .single();
 
-  if (error) {
+  if (error || !data) {
     return jsonError("Could not save admin settings.", 500, "server_error");
   }
 

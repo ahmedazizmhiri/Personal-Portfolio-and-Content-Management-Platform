@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const isDevelopment = process.env.NODE_ENV === "development";
 const isNonProductionDeployment = isDevelopment || Boolean(process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production");
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const firebaseStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() || "";
 const analyticsEnabled = Boolean(
   process.env.NEXT_PUBLIC_GTM_ID
   || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
@@ -24,35 +24,11 @@ const googleSources = analyticsEnabled
       "https://region1.google-analytics.com",
     ]
   : [];
-const supabaseOrigin = (() => {
-  try {
-    return supabaseUrl ? new URL(supabaseUrl).origin : "";
-  } catch {
-    return "";
-  }
-})();
-const supabaseImagePatterns = (() => {
-  try {
-    const url = new URL(supabaseUrl);
-    if (url.protocol !== "https:") return [];
-    return [
-      {
-        protocol: "https",
-        hostname: url.hostname,
-        port: url.port,
-        pathname: "/storage/v1/object/public/**",
-      },
-      {
-        protocol: "https",
-        hostname: url.hostname,
-        port: url.port,
-        pathname: "/storage/v1/render/image/public/**",
-      },
-    ];
-  } catch {
-    return [];
-  }
-})();
+const firebaseStorageOrigin = firebaseStorageBucket ? "https://firebasestorage.googleapis.com" : "";
+const firebaseImagePatterns = firebaseStorageBucket ? [{
+  protocol: "https", hostname: "firebasestorage.googleapis.com", port: "",
+  pathname: `/v0/b/${encodeURIComponent(firebaseStorageBucket)}/o/**`,
+}] : [];
 
 const connectSources = [
   "'self'",
@@ -86,14 +62,14 @@ const imageSources = [
   "'self'",
   "data:",
   "blob:",
-  supabaseOrigin,
+  firebaseStorageOrigin,
   ...googleSources,
   ...claritySources,
 ]
   .filter(Boolean)
   .join(" ");
 
-const mediaSources = ["'self'", "blob:", supabaseOrigin]
+const mediaSources = ["'self'", "blob:", firebaseStorageOrigin]
   .filter(Boolean)
   .join(" ");
 
@@ -166,7 +142,7 @@ const nextConfig = {
     // The portfolio's fill images top out near 405px. Adding a 384px device
     // candidate prevents small cards/avatars from jumping straight to 640px.
     deviceSizes: [384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    remotePatterns: supabaseImagePatterns,
+    remotePatterns: firebaseImagePatterns,
   },
   outputFileTracingIncludes: {
     "/api/admin/upload": [

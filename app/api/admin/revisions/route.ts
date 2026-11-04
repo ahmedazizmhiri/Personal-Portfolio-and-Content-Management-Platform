@@ -5,8 +5,8 @@ import { jsonError, jsonOk } from "@/lib/security/http";
 import {
   editableCmsTables,
 } from "@/lib/security/validation";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     sameOrigin: false,
   });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError(
       "CMS server configuration is incomplete.",
       500,
@@ -40,8 +40,8 @@ export async function GET(request: Request) {
     return jsonError("Invalid revision query.", 400, "validation_error");
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
+  const firebase = createFirebaseAdminClient();
+  const { data, error } = await firebase
     .from("cms_content_revisions")
     .select(
       "id,actor_user_id,table_name,record_id,operation,changed_fields,previous_values,next_values,created_at",

@@ -13,7 +13,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { safeRedirect } from "@/lib/security/redirects";
 import { loginSchema } from "@/lib/security/validation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const firebase = await createFirebaseServerClient();
+    const { data, error } = await firebase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
       options: { captchaToken: parsed.data.captchaToken },
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
     const membership = await getAdminMembership(data.user.id);
     if (membership.status !== "admin") {
-      await supabase.auth.signOut();
+      await firebase.auth.signOut();
       if (membership.status === "server_error") {
         return jsonError("Admin access could not be verified.", 500, "server_error");
       }
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const mfa = await getMfaContext(supabase, data.user.id, request);
+    const mfa = await getMfaContext(firebase, data.user.id, request);
     const next = safeRedirect(parsed.data.next, "/admin");
 
     if (mfa.mfaRequired && !mfa.mfaSatisfied) {

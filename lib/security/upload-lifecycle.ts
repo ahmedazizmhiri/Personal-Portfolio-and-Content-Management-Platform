@@ -1,4 +1,5 @@
 import type { UploadBucket } from "@/lib/cms-types";
+import { parseFirebaseAsset } from "@/lib/firebase/assets";
 import type { EditableCmsTable } from "@/lib/security/validation";
 
 export const uploadDeletionGraceMs = 5 * 60 * 1_000;
@@ -61,6 +62,8 @@ export const parsePublicStorageReference = (value: string): {
   bucket: UploadBucket;
   path: string;
 } | null => {
+  const firebase = parseFirebaseAsset(value, process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ?? "");
+  if (firebase) return { bucket: firebase.bucket as UploadBucket, path: firebase.path };
   let pathname: string;
   try {
     pathname = value.startsWith("/")

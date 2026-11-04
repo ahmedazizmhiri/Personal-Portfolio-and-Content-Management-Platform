@@ -48,11 +48,11 @@ const initialCaptcha: CaptchaSnapshot = {
 const loginErrorMessage = (error?: string) => ({
   unauthorized: "This account is not authorized for portfolio administration.",
   callback: "The authentication callback could not be completed.",
-  github: "GitHub login could not be started. Check the Supabase GitHub provider settings.",
+  github: "GitHub login could not be started. Check the Firebase GitHub provider settings.",
   github_oauth_failed: "GitHub OAuth was cancelled or failed. Please try again.",
-  github_disabled: "GitHub is disabled in Supabase. Enable the provider and add its Client ID and Client Secret.",
-  supabase_config: "Supabase client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-  server: "Admin access could not be verified. Check the server-side Supabase configuration.",
+  github_disabled: "GitHub is disabled in Firebase. Enable the provider and add its Client ID and Client Secret.",
+  firebase_config: "Firebase is not configured. Check the Firebase project settings.",
+  server: "Admin access could not be verified. Check the server-side Firebase configuration.",
   session: "The login session is missing or expired.",
   recovery: "The recovery link is invalid or expired. Request a new password reset email.",
 }[error ?? ""] ?? (error ? "Login could not be completed." : ""));

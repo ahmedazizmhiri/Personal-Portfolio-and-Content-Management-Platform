@@ -9,12 +9,12 @@ const state = vi.hoisted(() => ({
   rpc: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
-  isSupabaseAdminConfigured: () => state.configured,
+vi.mock("@/lib/firebase/config", () => ({
+  isFirebaseAdminConfigured: () => state.configured,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     rpc: state.rpc,
   }),
 }));

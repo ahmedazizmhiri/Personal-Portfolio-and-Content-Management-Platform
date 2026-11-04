@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireAdminApi, writeAdminAudit } from "@/lib/security/admin-auth";
 import { clientIp, jsonError, jsonOk } from "@/lib/security/http";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError(
       "CMS server configuration is incomplete.",
       500,
@@ -42,8 +42,8 @@ export async function POST(request: Request) {
   });
   if (!limited.allowed) return rateLimitResponse(limited);
 
-  const supabase = createSupabaseAdminClient();
-  const upload = await supabase
+  const firebase = createFirebaseAdminClient();
+  const upload = await firebase
     .from("uploads")
     .select("id,bucket,path,deletion_status")
     .eq("id", parsed.data.id)
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   }
 
   const expiresIn = 60;
-  const signed = await supabase.storage
+  const signed = await firebase.storage
     .from("uploads")
     .createSignedUrl(upload.data.path, expiresIn);
   if (signed.error || !signed.data?.signedUrl) {

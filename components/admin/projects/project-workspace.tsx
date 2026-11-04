@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   useMemo,
@@ -344,6 +345,7 @@ export function ProjectWorkspace({
 
   mediaCount: number;
 }) {
+  const router = useRouter();
   const [project, setProject] =
     useState(initialProject);
 
@@ -823,7 +825,7 @@ export function ProjectWorkspace({
           "Project permanently deleted. Returning to the CMS...",
         );
 
-        window.location.assign(
+        router.push(
           "/admin",
         );
       } catch {
