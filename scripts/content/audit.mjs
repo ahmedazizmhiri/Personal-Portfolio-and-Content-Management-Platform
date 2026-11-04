@@ -131,12 +131,9 @@ const parseEnv = (file) => {
 auditRepositoryFallbacks();
 
 const localEnv = parseEnv(path.join(repositoryRoot, ".env.local"));
-const url =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  localEnv.NEXT_PUBLIC_SUPABASE_URL;
-const key =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  localEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || localEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const fixtureUrl = process.env.NODE_ENV === "test" ? process.env.CONTENT_AUDIT_FIXTURE_URL : "";
+for (const [key, value] of Object.entries(localEnv)) { if (!process.env[key]) process.env[key] = value; }
 const publicQueries = [
   [
     "profile",
@@ -206,29 +203,32 @@ const publicQueries = [
   ],
 ];
 
-if (!url || !key) {
+if (!projectId && !fixtureUrl) {
   console.log(
-    "Content audit: Supabase is not configured; repository fallback and public assets were inspected.",
+    "Content audit: Firebase is not configured; repository fallback and public assets were inspected.",
   );
   report();
   process.exit(failures.length ? 1 : 0);
 }
 
 console.log(
-  "Content audit: inspecting published CMS content through read-only anonymous access.",
+  "Content audit: inspecting CMS content with the server Firebase Admin SDK.",
 );
 for (const [table, select, filter] of publicQueries) {
-  const response = await fetch(
-    `${url}/rest/v1/${table}?select=${encodeURIComponent(select)}&limit=500&${filter}`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
-  );
-  if (!response.ok) {
-    failures.push(
-      `${table}: public published read failed with HTTP ${response.status}`,
-    );
-    continue;
+  let rows;
+  if (fixtureUrl) {
+    const response = await fetch(`${fixtureUrl}/rest/v1/${table}?select=${encodeURIComponent(select)}&limit=500&${filter}`);
+    if (!response.ok) { failures.push(`${table}: published read failed with HTTP ${response.status}`); continue; }
+    rows = await response.json();
+  } else {
+    try {
+      const { getAdmin } = await import("../firebase/shared.mjs");
+      const snapshot = await getAdmin(projectId).db.collection(table).limit(500).get();
+      rows = snapshot.docs.map((doc) => doc.data());
+      const predicates = filter.split("&").filter(Boolean).map((condition) => condition.split("=eq."));
+      rows = rows.filter((row) => predicates.every(([field, value]) => String(row[field]) === value));
+    } catch (error) { failures.push(`${table}: Firestore read failed (${error.code ?? "unavailable"})`); continue; }
   }
-  const rows = await response.json();
   if (!Array.isArray(rows)) {
     failures.push(`${table}: response was not an array`);
     continue;

@@ -121,7 +121,7 @@ export const ForgotPasswordForm = () => {
   );
 };
 
-export const ResetPasswordForm = ({ recoveryReady = true }: { recoveryReady?: boolean }) => {
+export const ResetPasswordForm = ({ recoveryReady = true, oobCode = "" }: { recoveryReady?: boolean; oobCode?: string }) => {
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [status, setStatus] = useState("");
@@ -137,7 +137,7 @@ export const ResetPasswordForm = ({ recoveryReady = true }: { recoveryReady?: bo
     }
     setPending(true);
     try {
-      const response = await adminFetch("/api/auth/reset-password", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      const response = await adminFetch("/api/auth/reset-password", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, oobCode }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) { setStatus(data.error ?? "Password could not be updated."); return; }
       window.location.href = data.redirectTo ?? "/admin/login?reset=success";

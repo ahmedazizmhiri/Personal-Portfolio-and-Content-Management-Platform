@@ -9,7 +9,7 @@ import type {
   ProjectWorkspaceSectionItem,
 } from "@/lib/projects/project-workspace-types";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 
 export const projectWorkspaceProjectSelect = `
   id,
@@ -141,14 +141,14 @@ export async function getProjectWorkspaceProject(
 ): Promise<
   ProjectWorkspaceProjectData | null
 > {
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   const [
     projectResult,
     linksResult,
   ] = await Promise.all([
-    supabase
+    firebase
       .from("projects")
       .select(
         projectWorkspaceProjectSelect,
@@ -160,7 +160,7 @@ export async function getProjectWorkspaceProject(
         { merge: false }
       >(),
 
-    supabase
+    firebase
       .from("project_links")
       .select(
         projectLinksSelect,
@@ -212,8 +212,8 @@ export async function getProjectWorkspaceData(
 ): Promise<
   ProjectWorkspaceData | null
 > {
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   const [
     projectData,
@@ -225,7 +225,7 @@ export async function getProjectWorkspaceData(
       projectId,
     ),
 
-    supabase
+    firebase
       .from(
         "project_section_definitions",
       )
@@ -247,7 +247,7 @@ export async function getProjectWorkspaceData(
         { merge: false }
       >(),
 
-    supabase
+    firebase
       .from(
         "project_sections",
       )
@@ -269,7 +269,7 @@ export async function getProjectWorkspaceData(
         { merge: false }
       >(),
 
-    supabase
+    firebase
   .from(
     "project_media",
   )
@@ -340,7 +340,7 @@ export async function getProjectWorkspaceData(
     sectionIds.length > 0
   ) {
     const itemsResult =
-      await supabase
+      await firebase
         .from(
           "project_section_items",
         )

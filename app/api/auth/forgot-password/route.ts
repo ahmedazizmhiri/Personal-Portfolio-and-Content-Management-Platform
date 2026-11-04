@@ -16,8 +16,8 @@ import {
   rateLimitResponse,
 } from "@/lib/security/rate-limit";
 import { forgotPasswordSchema } from "@/lib/security/validation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { adminDeviceHmacSecret } from "@/lib/supabase/config";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
+import { adminDeviceHmacSecret } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
       createPasswordRecoveryState(emailKey),
     );
     const redirectTo = callback.toString();
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    const firebase = await createFirebaseServerClient();
+    const { error } = await firebase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo,
       captchaToken: parsed.data.captchaToken,
     });

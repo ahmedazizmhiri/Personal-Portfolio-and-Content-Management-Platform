@@ -25,7 +25,7 @@ import {
 
 import { getProjectWorkspaceProject } from "@/lib/projects/project-workspace-data";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -251,11 +251,11 @@ export async function PATCH(
     );
   }
 
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   const result =
-    await supabase.rpc(
+    await firebase.rpc(
       "mutate_project_workspace",
       {
         p_project_id:

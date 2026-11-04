@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     return jsonError("Invalid authenticator code.", 400);
   }
 
-  const { data, error } = await admin.supabase.auth.mfa.challengeAndVerify({
+  const { data, error } = await admin.firebase.auth.mfa.challengeAndVerify({
     factorId: parsed.data.factorId,
     code: parsed.data.code,
   });

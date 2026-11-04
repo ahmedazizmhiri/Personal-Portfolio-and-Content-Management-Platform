@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAllowedOrigins } from "@/lib/supabase/config";
+import { getAllowedOrigins } from "@/lib/firebase/config";
 import { jsonHeaders } from "@/lib/security/headers";
 export { jsonHeaders } from "@/lib/security/headers";
 

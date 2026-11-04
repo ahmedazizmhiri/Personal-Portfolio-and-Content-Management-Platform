@@ -1,5 +1,5 @@
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 import { getMfaContext, requireAdminApi } from "@/lib/security/admin-auth";
 import { clientIp, jsonError, jsonOk } from "@/lib/security/http";
 import {
@@ -24,16 +24,16 @@ export async function GET(request: Request) {
   }
 
   const mfa = await getMfaContext(
-    admin.supabase,
+    admin.firebase,
     admin.user.id,
     request,
     admin.user,
   );
   let devices: unknown[] = [];
 
-  if (isSupabaseAdminConfigured()) {
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
+  if (isFirebaseAdminConfigured()) {
+    const firebase = createFirebaseAdminClient();
+    const { data, error } = await firebase
       .from("admin_remembered_devices")
       .select(
         "id, created_at, last_used_at, expires_at, revoked_at, rotated_at, rotation_counter, revocation_reason",

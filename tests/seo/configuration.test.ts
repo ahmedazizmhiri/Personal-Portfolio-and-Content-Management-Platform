@@ -24,16 +24,11 @@ describe("public SEO configuration", () => {
     );
   });
 
-  it("restricts optimized remote images to configured Supabase public paths", () => {
+  it("restricts optimized remote images to the configured Firebase Storage bucket", () => {
     const nextConfig = readRepositoryFile("next.config.js");
-
-    expect(nextConfig).toContain(
-      'pathname: "/storage/v1/object/public/**"',
-    );
-    expect(nextConfig).toContain(
-      'pathname: "/storage/v1/render/image/public/**"',
-    );
-    expect(nextConfig).toContain("remotePatterns: supabaseImagePatterns");
+    expect(nextConfig).toContain('hostname: "firebasestorage.googleapis.com"');
+    expect(nextConfig).toContain('encodeURIComponent(firebaseStorageBucket)');
+    expect(nextConfig).toContain('remotePatterns: firebaseImagePatterns');
   });
 
   it("keeps fallback profile URLs in one shared identity configuration", () => {

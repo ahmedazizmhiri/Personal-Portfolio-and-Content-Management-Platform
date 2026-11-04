@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node --conditions=react-server scripts/firebase/check-runtime.mjs && next build",
     "type-check": "tsc --noEmit",
     "start": "next start",
     "lint": "eslint .",
@@ -12,6 +12,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:integration": "vitest run tests/integration",
+    "test:firebase": "firebase emulators:exec --only auth,firestore,storage --project demo-portfolio-migration \"npm run test:integration\"",
+    "firebase:export": "node scripts/firebase/export-supabase.mjs",
+    "firebase:import": "node scripts/firebase/import-firebase.mjs",
+    "firebase:prepare-repository": "node scripts/firebase/prepare-repository.mjs",
     "audit:lighthouse": "node scripts/performance/lighthouse.mjs",
     "audit:security": "npm run security:verify",
     "audit:seo": "npm run seo:audit",
@@ -45,26 +49,31 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": "^20.9.0 || >=22.0.0"
+    "node": "24.x"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.4.0",
     "@hcaptcha/react-hcaptcha": "^2.0.2",
     "@heroicons/react": "^2.2.0",
     "@microsoft/clarity": "^1.0.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
-    "@supabase/ssr": "^0.12.0",
-    "@supabase/supabase-js": "^2.110.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/oidc": "^4.0.6",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
+    "firebase-admin": "14.5.0",
     "framer-motion": "^12.42.2",
+    "google-auth-library": "^11.3.3",
     "maath": "^0.10.8",
-    "next": "16.2.12",
+    "next": "16.4.5",
+    "otplib": "13.6.0",
+    "qrcode": "1.5.4",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-icons": "^5.7.0",
     "react-intersection-observer": "^10.0.3",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
     "three": "^0.184.0",
     "zod": "^4.4.3"
@@ -73,13 +82,15 @@
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.0",
     "@types/node": "^26",
+    "@types/qrcode": "1.5.6",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.5.2",
     "brace-expansion": "file:vendor/brace-expansion-compat",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.4.5",
+    "firebase-tools": "15.34.2",
     "lighthouse": "^13.4.1",
     "postcss": "8.5.23",
     "tailwindcss": "^3.4.19",
@@ -93,7 +104,10 @@
       "brace-expansion": "$brace-expansion"
     },
     "postcss": "$postcss",
-    "sharp": "0.35.3",
-    "sucrase": "3.35.1"
+    "sharp": "0.35.5",
+    "sucrase": "3.35.1",
+    "jwks-rsa": {
+      "jose": "5.10.0"
+    }
   }
 }

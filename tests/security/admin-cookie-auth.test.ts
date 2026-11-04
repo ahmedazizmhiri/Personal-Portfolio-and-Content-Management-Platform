@@ -18,12 +18,12 @@ describe("cookie-only admin authentication architecture", () => {
     expect(combined).not.toMatch(/Authorization\s*[:=]/);
     expect(combined).not.toMatch(/getSession\s*\(/);
     expect(combined).not.toMatch(/refreshSession\s*\(/);
-    expect(combined).not.toMatch(/createSupabaseBrowserClient/);
+    expect(combined).not.toMatch(/createFirebaseBrowserClient/);
   });
 
   it("keeps admin identity verification on server getUser", () => {
     const adminAuth = source("lib/security/admin-auth.ts");
-    expect(adminAuth).toMatch(/supabase\.auth\.getUser\s*\(/);
+    expect(adminAuth).toMatch(/firebase\.auth\.getUser\s*\(/);
     expect(adminAuth).not.toMatch(/Bearer/);
   });
 

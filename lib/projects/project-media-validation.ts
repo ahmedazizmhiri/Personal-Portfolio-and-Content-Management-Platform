@@ -97,7 +97,7 @@ export const projectMediaValuesSchema =
             message:
               value.media_type ===
               "image"
-                ? "Choose an internal image or an image uploaded to this Supabase project."
+                ? "Choose an internal image or an image uploaded to this Firebase project."
                 : "Video and document media must use an HTTPS URL.",
           });
         }

@@ -23,8 +23,8 @@ const state = vi.hoisted(() => ({
   }>,
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     from: () => ({
       select: () => {
         const query = {

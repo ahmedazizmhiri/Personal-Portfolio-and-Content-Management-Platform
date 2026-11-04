@@ -10,8 +10,8 @@ import {
   messageStatusSchema,
   messageUpdateSchema,
 } from "@/lib/security/validation";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ const legacyMessageFields = "id,name,email,message,source,status,created_at";
 const migrationColumns =
   /\b(updated_at|read_at|archived_at|delivery_status|delivery_attempts|last_delivery_attempt_at|next_delivery_attempt_at|delivered_at|delivery_error_code|provider_message_id)\b/i;
 
-type SupabaseError = {
+type FirebaseError = {
   code?: string;
   message?: string;
 };
@@ -37,7 +37,7 @@ type LegacyMessage = {
   created_at: string;
 };
 
-const isMissingMessageMigration = (error: SupabaseError | null) =>
+const isMissingMessageMigration = (error: FirebaseError | null) =>
   Boolean(
     error
       && (error.code === "42703" || error.code === "PGRST204")
@@ -58,15 +58,15 @@ const normalizeLegacyMessage = (message: LegacyMessage) => ({
   provider_message_id: null,
 });
 
-const logSupabaseError = (operation: string, error: SupabaseError) => {
-  console.error("[api/admin/messages] Supabase operation failed", {
+const logFirebaseError = (operation: string, error: FirebaseError) => {
+  console.error("[api/admin/messages] Firebase operation failed", {
     operation,
     code: error.code,
     message: error.message,
   });
 };
 
-const logLegacyFallback = (operation: string, error: SupabaseError) => {
+const logLegacyFallback = (operation: string, error: FirebaseError) => {
   console.warn("[api/admin/messages] Using legacy contact_messages schema", {
     operation,
     code: error.code,
@@ -119,7 +119,7 @@ const updateForAction = (
 export async function GET(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true, sameOrigin: false });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -129,8 +129,8 @@ export async function GET(request: Request) {
     return jsonError("Invalid message view.", 400, "validation_error");
   }
 
-  const supabase = createSupabaseAdminClient();
-  let query = supabase
+  const firebase = createFirebaseAdminClient();
+  let query = firebase
     .from("contact_messages")
     .select(messageFields)
     .order("created_at", { ascending: false })
@@ -146,12 +146,12 @@ export async function GET(request: Request) {
   if (!error) return jsonOk({ messages: data ?? [] });
 
   if (!isMissingMessageMigration(error)) {
-    logSupabaseError("list", error);
+    logFirebaseError("list", error);
     return jsonError("Could not load messages.", 500, "server_error");
   }
 
   logLegacyFallback("list", error);
-  let legacyQuery = supabase
+  let legacyQuery = firebase
     .from("contact_messages")
     .select(legacyMessageFields)
     .order("created_at", { ascending: false })
@@ -165,12 +165,12 @@ export async function GET(request: Request) {
 
   const legacyResult = await legacyQuery;
   if (legacyResult.error) {
-    logSupabaseError("list_legacy", legacyResult.error);
+    logFirebaseError("list_legacy", legacyResult.error);
     return jsonError("Could not load messages.", 500, "server_error");
   }
 
   return jsonOk({
-    messages: (legacyResult.data ?? []).map(normalizeLegacyMessage),
+    messages: (legacyResult.data ?? []).map((row) => normalizeLegacyMessage(row as LegacyMessage)),
     migrationRequired: true,
   });
 }
@@ -178,7 +178,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -197,10 +197,10 @@ export async function POST(request: Request) {
   });
   if (!limited.allowed) return rateLimitResponse(limited);
 
-  const supabase = createSupabaseAdminClient();
+  const firebase = createFirebaseAdminClient();
 
   if (parsed.data.action === "resend_notification") {
-    const message = await supabase
+    const message = await firebase
       .from("contact_messages")
       .select("id,name,email,message")
       .eq("id", parsed.data.id)
@@ -210,8 +210,8 @@ export async function POST(request: Request) {
     }
     if (!message.data) return jsonError("Message not found.", 404, "not_found");
 
-    await deliverContactNotification(message.data);
-    const refreshed = await supabase
+    await deliverContactNotification({ id: message.data.id, name: message.data.name, email: message.data.email, message: message.data.message });
+    const refreshed = await firebase
       .from("contact_messages")
       .select(messageFields)
       .eq("id", parsed.data.id)
@@ -230,14 +230,14 @@ export async function POST(request: Request) {
     return jsonOk({ message: refreshed.data });
   }
 
-  const existing = await supabase
+  const existing = await firebase
     .from("contact_messages")
     .select("id, read_at")
     .eq("id", parsed.data.id)
     .maybeSingle();
 
   if (existing.error && !isMissingMessageMigration(existing.error)) {
-    logSupabaseError("load_for_update", existing.error);
+    logFirebaseError("load_for_update", existing.error);
     return jsonError("Could not load the message.", 500, "server_error");
   }
 
@@ -246,17 +246,17 @@ export async function POST(request: Request) {
 
   if (useLegacySchema) {
     logLegacyFallback("load_for_update", existing.error!);
-    const legacyResult = await supabase
+    const legacyResult = await firebase
       .from("contact_messages")
       .select("id")
       .eq("id", parsed.data.id)
       .maybeSingle();
 
     if (legacyResult.error) {
-      logSupabaseError("load_for_update_legacy", legacyResult.error);
+      logFirebaseError("load_for_update_legacy", legacyResult.error);
       return jsonError("Could not load the message.", 500, "server_error");
     }
-    legacyExisting = legacyResult.data;
+    legacyExisting = legacyResult.data ? { id: legacyResult.data.id } : null;
   }
 
   if (useLegacySchema ? !legacyExisting : !existing.data) {
@@ -264,13 +264,13 @@ export async function POST(request: Request) {
   }
 
   const updateResult = useLegacySchema
-    ? await supabase
+    ? await firebase
       .from("contact_messages")
       .update({ status: actionStatus[parsed.data.action] })
       .eq("id", parsed.data.id)
       .select(legacyMessageFields)
       .single()
-    : await supabase
+    : await firebase
       .from("contact_messages")
       .update(updateForAction(parsed.data.action, existing.data!.read_at))
       .eq("id", parsed.data.id)
@@ -278,7 +278,7 @@ export async function POST(request: Request) {
       .single();
 
   if (updateResult.error) {
-    logSupabaseError(useLegacySchema ? "update_legacy" : "update", updateResult.error);
+    logFirebaseError(useLegacySchema ? "update_legacy" : "update", updateResult.error);
     return jsonError("Could not update message.", 500, "server_error");
   }
 
@@ -304,7 +304,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -321,8 +321,8 @@ export async function DELETE(request: Request) {
   });
   if (!limited.allowed) return rateLimitResponse(limited);
 
-  const supabase = createSupabaseAdminClient();
-  const existing = await supabase
+  const firebase = createFirebaseAdminClient();
+  const existing = await firebase
     .from("contact_messages")
     .select("id,status")
     .eq("id", parsed.data.id)
@@ -339,7 +339,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("contact_messages")
     .delete()
     .eq("id", parsed.data.id)
@@ -348,7 +348,7 @@ export async function DELETE(request: Request) {
     .maybeSingle();
 
   if (error) {
-    logSupabaseError("delete", error);
+    logFirebaseError("delete", error);
     return jsonError("Could not delete message.", 500, "server_error");
   }
   if (!data) {

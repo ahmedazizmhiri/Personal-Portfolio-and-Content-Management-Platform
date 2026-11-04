@@ -28,9 +28,9 @@ import type {
 import { createVolunteeringFooterLink } from "@/lib/navigation";
 import { isPublicResume } from "@/lib/resume-policy";
 import { createProfileSocialLinkFallback } from "@/lib/social-links";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured, isSupabaseConfigured } from "@/lib/supabase/config";
-import { createSupabasePublicClient } from "@/lib/supabase/server";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured, isFirebaseConfigured } from "@/lib/firebase/config";
+import { createFirebasePublicClient } from "@/lib/firebase/server";
 import {
   type EditableCmsTable,
   isEditableCmsTable,
@@ -416,10 +416,10 @@ const groupStatus = (results: PublicQueryResult[]) => {
 
 const loadProfileRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     return readPublicRows(
       "CMS-PUBLIC-PROFILE-READ",
-      supabase
+      firebase
         .from("profile")
         .select(publicColumns.profile)
         .eq("published", true)
@@ -433,11 +433,11 @@ const loadProfileRows = unstable_cache(
 
 const loadNavigationRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     const [pages, pageSections] = await Promise.all([
       readPublicRows(
         "CMS-PUBLIC-NAVIGATION-READ",
-        supabase
+        firebase
           .from("pages")
           .select(publicColumns.pages)
           .eq("is_published", true)
@@ -445,7 +445,7 @@ const loadNavigationRows = unstable_cache(
       ),
       readPublicRows(
         "CMS-PUBLIC-NAVIGATION-SECTIONS-READ",
-        supabase
+        firebase
           .from("page_sections")
           .select(publicColumns.pageSections)
           .eq("is_visible", true)
@@ -462,12 +462,12 @@ const loadNavigationRows = unstable_cache(
 
 const loadPresentationRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     const [hero, about, pages, pageSections, pageSectionItems] =
       await Promise.all([
         readPublicRows(
           "CMS-PUBLIC-HERO-READ",
-          supabase
+          firebase
             .from("hero")
             .select(publicColumns.hero)
             .eq("published", true)
@@ -476,7 +476,7 @@ const loadPresentationRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-ABOUT-READ",
-          supabase
+          firebase
             .from("about")
             .select(publicColumns.about)
             .eq("published", true)
@@ -485,14 +485,14 @@ const loadPresentationRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-PAGES-READ",
-          supabase
+          firebase
             .from("pages")
             .select(publicColumns.pages)
             .eq("is_published", true),
         ),
         readPublicRows(
           "CMS-PUBLIC-PAGE-SECTIONS-READ",
-          supabase
+          firebase
             .from("page_sections")
             .select(publicColumns.pageSections)
             .eq("is_visible", true)
@@ -501,7 +501,7 @@ const loadPresentationRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-PAGE-ITEMS-READ",
-          supabase
+          firebase
             .from("page_section_items")
             .select(publicColumns.pageSectionItems)
             .eq("is_visible", true)
@@ -517,12 +517,12 @@ const loadPresentationRows = unstable_cache(
 
 const loadProjectRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     const [projects, projectSections, projectSectionItems, projectMedia] =
       await Promise.all([
         readPublicRows(
           "CMS-PUBLIC-PROJECTS-READ",
-          supabase
+          firebase
             .from("projects")
             .select(publicColumns.projects)
             .eq("published", true)
@@ -531,7 +531,7 @@ const loadProjectRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-PROJECT-SECTIONS-READ",
-          supabase
+          firebase
             .from("project_sections")
             .select(publicColumns.projectSections)
             .eq("is_visible", true)
@@ -540,7 +540,7 @@ const loadProjectRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-PROJECT-ITEMS-READ",
-          supabase
+          firebase
             .from("project_section_items")
             .select(publicColumns.projectSectionItems)
             .eq("is_visible", true)
@@ -548,7 +548,7 @@ const loadProjectRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-PROJECT-MEDIA-READ",
-          supabase
+          firebase
             .from("project_media")
             .select(publicColumns.projectMedia)
             .eq("is_visible", true)
@@ -564,11 +564,11 @@ const loadProjectRows = unstable_cache(
 
 const loadCareerRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     const [skills, experience, education] = await Promise.all([
       readPublicRows(
         "CMS-PUBLIC-SKILLS-READ",
-        supabase
+        firebase
           .from("skills")
           .select(publicColumns.skills)
           .eq("published", true)
@@ -576,7 +576,7 @@ const loadCareerRows = unstable_cache(
       ),
       readPublicRows(
         "CMS-PUBLIC-EXPERIENCE-READ",
-        supabase
+        firebase
           .from("experience")
           .select(publicColumns.experience)
           .eq("published", true)
@@ -584,7 +584,7 @@ const loadCareerRows = unstable_cache(
       ),
       readPublicRows(
         "CMS-PUBLIC-EDUCATION-READ",
-        supabase
+        firebase
           .from("education")
           .select(publicColumns.education)
           .eq("published", true)
@@ -600,10 +600,10 @@ const loadCareerRows = unstable_cache(
 
 const loadSocialLinkRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     return readPublicRows(
       "CMS-PUBLIC-SOCIAL-LINKS-READ",
-      supabase
+      firebase
         .from("social_links")
         .select(publicColumns.socialLinks)
         .eq("published", true)
@@ -619,12 +619,12 @@ const loadSocialLinkRows = unstable_cache(
 
 const loadSecondaryRows = unstable_cache(
   async () => {
-    const supabase = createSupabasePublicClient();
+    const firebase = createFirebasePublicClient();
     const [certifications, loadedResumes, socialLinks, volunteering] =
       await Promise.all([
         readPublicRows(
           "CMS-PUBLIC-CERTIFICATIONS-READ",
-          supabase
+          firebase
             .from("certifications")
             .select(publicColumns.certifications)
             .eq("published", true)
@@ -632,7 +632,7 @@ const loadSecondaryRows = unstable_cache(
         ),
         readPublicRows(
           "CMS-PUBLIC-RESUMES-READ",
-          supabase
+          firebase
             .from("resumes")
             .select(publicColumns.resumes)
             .eq("published", true)
@@ -641,7 +641,7 @@ const loadSecondaryRows = unstable_cache(
         loadSocialLinkRows(),
         readPublicRows(
           "CMS-PUBLIC-VOLUNTEERING-READ",
-          supabase
+          firebase
             .from("volunteering")
             .select(publicColumns.volunteering)
             .eq("published", true)
@@ -1094,7 +1094,7 @@ const getPortfolioChromeContentImpl =
         socialLinks: fallbackPortfolioContent.socialLinks,
       };
     }
-    if (!isSupabaseConfigured()) {
+    if (!isFirebaseConfigured()) {
       return {
         profile: fallbackPortfolioContent.profile,
         navLinks: primaryNavigation,
@@ -1239,7 +1239,7 @@ const e2eFixtureContent = (): PortfolioContent => {
 
 const getPortfolioContentImpl = async (): Promise<PortfolioContent> => {
   if (shouldUseE2eFixture()) return e2eFixtureContent();
-  if (!isSupabaseConfigured()) return fallbackPortfolioContent;
+  if (!isFirebaseConfigured()) return fallbackPortfolioContent;
 
   const [profileResult, presentation, projectsGroup, career, secondary] =
     await Promise.all([
@@ -1433,16 +1433,16 @@ export const getProjectSlugRedirect =
 
       if (
         !oldSlug ||
-        !isSupabaseConfigured()
+        !isFirebaseConfigured()
       ) {
         return null;
       }
 
-      const supabase =
-        createSupabasePublicClient();
+      const firebase =
+        createFirebasePublicClient();
 
       const historyResult =
-        await supabase
+        await firebase
           .from(
             "project_slug_history",
           )
@@ -1484,7 +1484,7 @@ export const getProjectSlugRedirect =
       }
 
       const projectResult =
-        await supabase
+        await firebase
           .from(
             "projects",
           )
@@ -1608,14 +1608,14 @@ const fallbackAdminContentSnapshot = (): AdminContentSnapshot => ({
 
 export const getAdminContentSnapshot =
   async (): Promise<AdminContentSnapshot> => {
-    if (!isSupabaseAdminConfigured()) {
+    if (!isFirebaseAdminConfigured()) {
       return fallbackAdminContentSnapshot();
     }
 
-    const supabase = createSupabaseAdminClient();
+    const firebase = createFirebaseAdminClient();
     const entries = await Promise.all(
       cmsTables.map(async (table) => {
-        const result = await supabase
+        const result = await firebase
           .from(table)
           .select(adminColumnsFor(table))
           .limit(500);

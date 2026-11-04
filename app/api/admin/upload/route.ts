@@ -4,8 +4,8 @@ import { basename, extname, join, sep } from "node:path";
 import { z } from "zod";
 
 import type { UploadBucket, UploadRecord } from "@/lib/cms-types";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured, isFirebaseStorageConfigured } from "@/lib/firebase/config";
 import { requireAdminApi, writeAdminAudit } from "@/lib/security/admin-auth";
 import { clientIp, jsonError, jsonOk } from "@/lib/security/http";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
@@ -111,7 +111,7 @@ const readLocalPublicAssets = async (): Promise<UploadRecord[]> => {
 export async function GET(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true, sameOrigin: false });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -125,8 +125,8 @@ export async function GET(request: Request) {
   }
 
   const localAssetsPromise = readLocalPublicAssets();
-  const supabase = createSupabaseAdminClient();
-  let query = supabase
+  const firebase = createFirebaseAdminClient();
+  let query = firebase
     .from("uploads")
     .select(uploadFields)
     .in("deletion_status", ["active", "pending", "failed"])
@@ -144,20 +144,21 @@ export async function GET(request: Request) {
     !parsed.data.bucket || asset.bucket === parsed.data.bucket,
   );
   const storageAssets = (data ?? []).map((asset) => ({
-    ...asset,
+    ...(asset as UploadRecord),
     source: "storage" as const,
   }));
   const uploads = [...storageAssets, ...localAssets]
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
     .slice(0, parsed.data.limit);
 
-  return jsonOk({ uploads });
+  return jsonOk({ uploads, storageEnabled: isFirebaseStorageConfigured() });
 }
 
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) return jsonError("CMS server configuration is incomplete.", 500, "server_error");
+  if (!isFirebaseAdminConfigured()) return jsonError("CMS server configuration is incomplete.", 500, "server_error");
+  if (!isFirebaseStorageConfigured()) return jsonError("Cloud uploads are not enabled. Choose an existing site asset or add files to the project and redeploy.", 409, "storage_not_enabled");
 
   const limited = await consumeRateLimit({
     scope: "admin_upload",
@@ -205,9 +206,9 @@ export async function POST(request: Request) {
 
   const digest = createHash("sha256").update(buffer).digest("hex");
   const path = `${admin.user.id}/${randomUUID()}.${validation.extension}`;
-  const supabase = createSupabaseAdminClient();
+  const firebase = createFirebaseAdminClient();
 
-  const duplicate = await supabase
+  const duplicate = await firebase
     .from("uploads")
     .select("id,bucket,path")
     .eq("sha256", digest)
@@ -229,7 +230,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const uploaded = await supabase.storage.from(bucket).upload(path, buffer, {
+  const uploaded = await firebase.storage.from(bucket).upload(path, buffer, {
     contentType: fileValue.type,
     upsert: false,
   });
@@ -239,10 +240,10 @@ export async function POST(request: Request) {
   }
 
   const publicUrl = publicBuckets.has(bucket)
-    ? supabase.storage.from(bucket).getPublicUrl(uploaded.data.path).data.publicUrl
+    ? firebase.storage.from(bucket).getPublicUrl(uploaded.data.path).data.publicUrl
     : null;
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("uploads")
     .insert({
       bucket,
@@ -258,8 +259,8 @@ export async function POST(request: Request) {
     .select(uploadFields)
     .single();
 
-  if (error) {
-    await supabase.storage.from(bucket).remove([uploaded.data.path]);
+  if (error || !data) {
+    await firebase.storage.from(bucket).remove([uploaded.data.path]);
     return jsonError("Upload metadata could not be saved.", 500, "server_error");
   }
 
@@ -270,7 +271,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError("CMS server configuration is incomplete.", 500, "server_error");
   }
 
@@ -287,8 +288,8 @@ export async function DELETE(request: Request) {
   });
   if (!limited.allowed) return rateLimitResponse(limited);
 
-  const supabase = createSupabaseAdminClient();
-  const existing = await supabase
+  const firebase = createFirebaseAdminClient();
+  const existing = await firebase
     .from("uploads")
     .select(
       "id,bucket,path,public_url,deletion_status,deletion_requested_at,deletion_error_code",
@@ -320,7 +321,7 @@ export async function DELETE(request: Request) {
 
   if (phase === "schedule") {
     const requestedAt = new Date().toISOString();
-    const pending = await supabase
+    const pending = await firebase
       .from("uploads")
       .update({
         deletion_status: "pending",
@@ -365,7 +366,7 @@ export async function DELETE(request: Request) {
   }
 
   const reconciliationClaim = `reconciling:${randomUUID()}`;
-  let claimQuery = supabase
+  let claimQuery = firebase
     .from("uploads")
     .update({
       deletion_error_code: reconciliationClaim,
@@ -400,7 +401,7 @@ export async function DELETE(request: Request) {
 
   for (const [table, fields] of Object.entries(uploadReferenceFields)) {
     for (const field of fields) {
-      const references = await supabase
+      const references = await firebase
         .from(table)
         .select("id")
         .in(field, candidates)
@@ -418,7 +419,7 @@ export async function DELETE(request: Request) {
   }
 
   if (referenceCheckFailed) {
-    await supabase
+    await firebase
       .from("uploads")
       .update({
         deletion_status: "failed",
@@ -434,7 +435,7 @@ export async function DELETE(request: Request) {
   }
 
   if (isReferenced) {
-    const restored = await supabase
+    const restored = await firebase
       .from("uploads")
       .update({
         deletion_status: "active",
@@ -470,11 +471,11 @@ export async function DELETE(request: Request) {
     });
   }
 
-  const removed = await supabase.storage
+  const removed = await firebase.storage
     .from(bucketParsed.data)
     .remove([existing.data.path]);
   if (removed.error) {
-    await supabase
+    await firebase
       .from("uploads")
       .update({
         deletion_status: "failed",
@@ -485,7 +486,7 @@ export async function DELETE(request: Request) {
     return jsonError("Could not delete the stored file.", 500, "server_error");
   }
 
-  const deleted = await supabase
+  const deleted = await firebase
     .from("uploads")
     .delete()
     .eq("id", existing.data.id)
@@ -493,7 +494,7 @@ export async function DELETE(request: Request) {
     .select("id")
     .maybeSingle();
   if (deleted.error || !deleted.data) {
-    await supabase
+    await firebase
       .from("uploads")
       .update({
         deletion_status: "failed",

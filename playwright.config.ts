@@ -34,12 +34,12 @@ export default defineConfig({
       env: {
         ...process.env,
         E2E_USE_FIXTURES: "true",
-        NEXT_PUBLIC_SUPABASE_URL:
-          process.env.E2E_TEST_SUPABASE_URL ?? "",
-        NEXT_PUBLIC_SUPABASE_ANON_KEY:
-          process.env.E2E_TEST_SUPABASE_ANON_KEY ?? "",
-        SUPABASE_SERVICE_ROLE_KEY:
-          process.env.E2E_TEST_SUPABASE_SERVICE_ROLE_KEY ?? "",
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID:
+          process.env.E2E_FIREBASE_PROJECT_ID ?? "",
+        NEXT_PUBLIC_FIREBASE_API_KEY:
+          process.env.E2E_FIREBASE_API_KEY ?? "",
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:
+          process.env.E2E_FIREBASE_STORAGE_BUCKET ?? "",
         NEXT_PUBLIC_CAPTCHA_PROVIDER: "",
         NEXT_PUBLIC_CAPTCHA_SITE_KEY: "",
         HCAPTCHA_SECRET_KEY: "",

@@ -1,18 +1,18 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import type { User } from "@supabase/supabase-js";
+import type { User } from "@/lib/firebase/types";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { createFirebaseServerClient } from "@/lib/firebase/server";
 import {
   adminDeviceHmacSecret,
   adminMfaRememberDays,
-  isSupabaseAdminConfigured,
+  isFirebaseAdminConfigured,
   requireAdminDeviceHmacSecret,
   requireAdminMfa,
-} from "@/lib/supabase/config";
+} from "@/lib/firebase/config";
 import {
   hmacSha256Hex,
   randomToken,
@@ -121,7 +121,7 @@ export const passwordRecoveryStateFromRequest = (
   );
 
 type AuthenticatedAdmin = {
-  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
   user: User;
   mfaRequired: boolean;
   mfaSatisfied: boolean;
@@ -131,7 +131,7 @@ type AuthenticatedAdmin = {
 export type AdminAuthState =
   | {
       status: "authenticated";
-      supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+      firebase: Awaited<ReturnType<typeof createFirebaseServerClient>>;
       user: User;
     }
   | {
@@ -188,15 +188,15 @@ const rememberCookieOptions = (expires: Date) => ({
 export const getAdminMembership = async (
   userId: string,
 ) => {
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return {
       status: "server_error" as const,
     };
   }
 
-  const supabase = createSupabaseAdminClient();
+  const firebase = createFirebaseAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("admins")
     .select("user_id")
     .eq("user_id", userId)
@@ -224,8 +224,8 @@ export const getAdminAuthState = async (
   request?: Request,
 ): Promise<AdminAuthState> => {
   try {
-    const supabase = await createSupabaseServerClient(request);
-    const { data, error } = await supabase.auth.getUser();
+    const firebase = await createFirebaseServerClient(request);
+    const { data, error } = await firebase.auth.getUser();
     const user = data.user;
 
     if (error || !user) {
@@ -242,7 +242,7 @@ export const getAdminAuthState = async (
 
     return {
       status: "authenticated",
-      supabase,
+      firebase,
       user,
     };
   } catch {
@@ -253,17 +253,17 @@ export const getAdminAuthState = async (
 export const getAdminSecurityPreference = async (
   userId: string,
 ) => {
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return {
       mfa_required: requireAdminMfa(),
       remember_device_enabled: true,
     };
   }
 
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("admin_security_preferences")
     .select(
       "mfa_required, remember_device_enabled",
@@ -355,20 +355,21 @@ export const validateRememberedDeviceToken =
     userId: string,
     token: string | null,
     request: Request,
+    authValidAfter?: string,
   ) => {
     if (
       !token ||
-      !isSupabaseAdminConfigured()
+      !isFirebaseAdminConfigured()
     ) {
       return false;
     }
 
-    const supabase =
-      createSupabaseAdminClient();
-    const { data, error } = await supabase
+    const firebase =
+      createFirebaseAdminClient();
+    const { data, error } = await firebase
       .from("admin_remembered_devices")
       .select(
-        "id, device_context_hash, network_context_hash, last_user_agent_hash, last_network_context_hash, expires_at, revoked_at",
+        "id, created_at, device_context_hash, network_context_hash, last_user_agent_hash, last_network_context_hash, expires_at, revoked_at",
       )
       .eq("user_id", userId)
       .eq("token_hash", sha256Hex(token))
@@ -385,13 +386,20 @@ export const validateRememberedDeviceToken =
     if (!data) {
       return false;
     }
+    // Firebase-hosted recovery also revokes refresh tokens. Devices issued
+    // before that auth epoch must not bypass MFA after a new password login.
+    if (authValidAfter) {
+      const epoch = Date.parse(authValidAfter);
+      const created = Date.parse(String(data.created_at ?? ""));
+      if (!Number.isFinite(epoch) || !Number.isFinite(created) || Math.floor(created / 1000) <= Math.floor(epoch / 1000)) return false;
+    }
 
     const context = deviceContext(request);
     if (
       !data.device_context_hash ||
       !hashesMatch(data.device_context_hash, context.userAgentHash)
     ) {
-      const { error: revokeError } = await supabase
+      const { error: revokeError } = await firebase
         .from("admin_remembered_devices")
         .update({
           revoked_at: new Date().toISOString(),
@@ -422,7 +430,7 @@ export const validateRememberedDeviceToken =
         context.networkHash,
       ),
     );
-    const { error: updateError } = await supabase
+    const { error: updateError } = await firebase
       .from("admin_remembered_devices")
       .update({
         last_used_at: new Date().toISOString(),
@@ -452,6 +460,7 @@ export const validateRememberedDeviceFromRequest =
   async (
     userId: string,
     request: Request,
+    authValidAfter?: string,
   ) =>
     validateRememberedDeviceToken(
       userId,
@@ -460,10 +469,11 @@ export const validateRememberedDeviceFromRequest =
         REMEMBER_DEVICE_COOKIE,
       ),
       request,
+      authValidAfter,
     );
 
 export const validateRememberedDeviceFromCookies =
-  async (userId: string) => {
+  async (userId: string, authValidAfter?: string) => {
     const cookieStore = await cookies();
     const requestHeaders = await headers();
     const copiedHeaders = new Headers();
@@ -481,6 +491,7 @@ export const validateRememberedDeviceFromCookies =
         REMEMBER_DEVICE_COOKIE,
       )?.value ?? null,
       request,
+      authValidAfter,
     );
   };
 
@@ -488,7 +499,7 @@ export const createRememberedDevice = async (
   userId: string,
   request: Request,
 ) => {
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return null;
   }
 
@@ -508,11 +519,11 @@ export const createRememberedDevice = async (
   let existingDevice:
     | { id: string; rotation_counter: number }
     | null = null;
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   if (existingToken) {
-    const { data, error } = await supabase
+    const { data, error } = await firebase
       .from("admin_remembered_devices")
       .select("id, rotation_counter")
       .eq("user_id", userId)
@@ -522,7 +533,7 @@ export const createRememberedDevice = async (
     if (error) {
       throw new Error("Existing remembered device could not be loaded.");
     }
-    existingDevice = data;
+    existingDevice = data ? { id: data.id, rotation_counter: data.rotation_counter } : null;
   }
 
   const token = randomToken(32);
@@ -538,7 +549,7 @@ export const createRememberedDevice = async (
 
   const context = deviceContext(request);
   const now = new Date().toISOString();
-  const { data: created, error } = await supabase
+  const { data: created, error } = await firebase
     .from("admin_remembered_devices")
     .insert({
       user_id: userId,
@@ -619,14 +630,14 @@ export const revokeRememberedDevice = async (
   id: string,
   reason = "user_revoked",
 ) => {
-  if (!isSupabaseAdminConfigured()) {
-    throw new Error("Supabase admin client is not configured.");
+  if (!isFirebaseAdminConfigured()) {
+    throw new Error("Firebase admin client is not configured.");
   }
 
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await firebase
     .from("admin_remembered_devices")
     .update({
       revoked_at:
@@ -650,12 +661,12 @@ export const revokeRememberedDeviceToken = async (
   reason = "token_revoked",
 ) => {
   if (!token) return;
-  if (!isSupabaseAdminConfigured()) {
-    throw new Error("Supabase admin client is not configured.");
+  if (!isFirebaseAdminConfigured()) {
+    throw new Error("Firebase admin client is not configured.");
   }
 
-  const supabase = createSupabaseAdminClient();
-  const { error } = await supabase
+  const firebase = createFirebaseAdminClient();
+  const { error } = await firebase
     .from("admin_remembered_devices")
     .update({
       revoked_at: new Date().toISOString(),
@@ -689,14 +700,14 @@ export const revokeAllRememberedDevices =
     userId: string,
     reason = "revoked_all",
   ) => {
-    if (!isSupabaseAdminConfigured()) {
-      throw new Error("Supabase admin client is not configured.");
+    if (!isFirebaseAdminConfigured()) {
+      throw new Error("Firebase admin client is not configured.");
     }
 
-    const supabase =
-      createSupabaseAdminClient();
+    const firebase =
+      createFirebaseAdminClient();
 
-    const { error } = await supabase
+    const { error } = await firebase
       .from("admin_remembered_devices")
       .update({
         revoked_at:
@@ -770,9 +781,9 @@ const mfaFactorsFromUser = (
 };
 
 export const getMfaContext = async (
-  supabase: Awaited<
+  firebase: Awaited<
     ReturnType<
-      typeof createSupabaseServerClient
+      typeof createFirebaseServerClient
     >
   >,
   userId: string,
@@ -782,16 +793,18 @@ export const getMfaContext = async (
   const preference =
     await getAdminSecurityPreference(userId);
 
-  let factors = mfaFactorsFromUser(user);
+  const identity = user ?? (await firebase.auth.getUser()).data.user ?? undefined;
+
+  let factors = mfaFactorsFromUser(identity);
   if (!factors) {
-    const factorResult = await supabase.auth.mfa.listFactors();
+    const factorResult = await firebase.auth.mfa.listFactors();
     if (factorResult.error) {
       throw new Error("MFA factors could not be verified.");
     }
     factors = factorResult.data ?? null;
   }
 
-  const aal = await supabase.auth.mfa
+  const aal = await firebase.auth.mfa
     .getAuthenticatorAssuranceLevel();
   if (aal.error) {
     throw new Error("MFA assurance level could not be verified.");
@@ -806,9 +819,11 @@ export const getMfaContext = async (
         ? await validateRememberedDeviceFromRequest(
             userId,
             request,
+            identity?.authValidAfter,
           )
         : await validateRememberedDeviceFromCookies(
             userId,
+            identity?.authValidAfter,
           )
       : false;
 
@@ -851,14 +866,14 @@ export const getAuthenticatedAdmin = async (
   }
 
   const mfa = await getMfaContext(
-    state.supabase,
+    state.firebase,
     state.user.id,
     request,
     state.user,
   );
 
   return {
-    supabase: state.supabase,
+    firebase: state.firebase,
     user: state.user,
     mfaRequired: mfa.mfaRequired,
     mfaSatisfied: mfa.mfaSatisfied,
@@ -965,7 +980,7 @@ export const requireAdminApi = async (
     };
   }
 
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return {
       ok: false as const,
       response: jsonError(
@@ -1025,7 +1040,7 @@ export const requireAdminApi = async (
       (options?.requireMfa ?? false) ||
       (options?.requireFreshMfa ?? false)
         ? await getMfaContext(
-            state.supabase,
+            state.firebase,
             state.user.id,
             request,
             state.user,
@@ -1069,7 +1084,7 @@ export const requireAdminApi = async (
 
     return {
       ok: true as const,
-      supabase: state.supabase,
+      firebase: state.firebase,
       user: state.user,
       mfaRequired:
         mfa.mfaRequired,
@@ -1093,10 +1108,10 @@ export const requireAdminApi = async (
 
 export const signOutAndRedirectToLogin =
   async (next = "/admin") => {
-    const supabase =
-      await createSupabaseServerClient();
+    const firebase =
+      await createFirebaseServerClient();
 
-    await supabase.auth.signOut();
+    await firebase.auth.signOut();
 
     redirect(
       `/admin/login?next=${encodeURIComponent(
@@ -1118,20 +1133,20 @@ export const writeAdminAudit = async (
     request?: Request;
   },
 ) => {
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return;
   }
 
   try {
-    const supabase =
-      createSupabaseAdminClient();
+    const firebase =
+      createFirebaseAdminClient();
     const privacySecret = adminDeviceHmacSecret();
     const keyedHash = (value: string) =>
       privacySecret
         ? hmacSha256Hex(value, privacySecret)
         : null;
 
-    const { error } = await supabase
+    const { error } = await firebase
       .from("admin_audit_logs")
       .insert({
         actor_user_id:

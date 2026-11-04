@@ -1,26 +1,9 @@
+import { ResetPasswordForm } from "@/components/admin/password-forms";
+
 export const dynamic = "force-dynamic";
 
-import { ResetPasswordForm } from "@/components/admin/password-forms";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-export default async function AdminResetPasswordPage() {
-  let recoveryReady = false;
-
-  try {
-    const supabase = await createSupabaseServerClient();
-    const { data } = await supabase.auth.getUser();
-    recoveryReady = Boolean(data.user);
-  } catch {
-    recoveryReady = false;
-  }
-
-  return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="min-h-screen px-6 py-28"
-    >
-      <ResetPasswordForm recoveryReady={recoveryReady} />
-    </main>
-  );
+export default async function AdminResetPasswordPage({ searchParams }: { searchParams: Promise<{ oobCode?: string; mode?: string }> }) {
+  const params = await searchParams;
+  const code = params.mode === "resetPassword" ? params.oobCode ?? "" : "";
+  return <main id="main-content" tabIndex={-1} className="min-h-screen px-6 py-28"><ResetPasswordForm recoveryReady={Boolean(code)} oobCode={code} /></main>;
 }

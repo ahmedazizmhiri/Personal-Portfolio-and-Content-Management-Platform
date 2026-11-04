@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     return jsonError("Invalid MFA request.", 400);
   }
 
-  const mfa = await admin.supabase.auth.mfa.listFactors();
+  const mfa = await admin.firebase.auth.mfa.listFactors();
   if (mfa.error) {
     return jsonError(
       "MFA factors could not be verified.",
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   }
 
   if (factorIsVerified && parsed.data.code) {
-    const verified = await admin.supabase.auth.mfa.challengeAndVerify({
+    const verified = await admin.firebase.auth.mfa.challengeAndVerify({
       factorId: parsed.data.factorId,
       code: parsed.data.code,
     });
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error } = await admin.supabase.auth.mfa.unenroll({ factorId: parsed.data.factorId });
+  const { error } = await admin.firebase.auth.mfa.unenroll({ factorId: parsed.data.factorId });
   if (error) {
     return jsonError("Could not remove MFA factor.", 500);
   }

@@ -1,16 +1,18 @@
 # Ahmed Aziz Mhiri — Portfolio & Content Management Platform
 
 [![Live Portfolio](https://img.shields.io/badge/Live%20Portfolio-Visit-000000?style=for-the-badge&logo=vercel)](https://ahmedaziz-portfolio.vercel.app/?utm_source=github&utm_medium=referral&utm_campaign=portfolio_growth_2026&utm_content=repository_badge)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2.12-000000?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.5-000000?style=for-the-badge&logo=nextdotjs)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-CMS%20%26%20Auth-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-CMS%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
 A production-grade 3D professional portfolio and content-management platform for **Ahmed Aziz Mhiri**, focused on **Marketing & Commercial Analytics, Business Intelligence, Digital Transformation and Automation**, with **Big Data & Applied AI** as complementary technical depth.
 
 > **Turning business data into decisions, growth and digital solutions.**
 
-The platform combines a recruiter-oriented public portfolio with a Supabase-backed CMS, secure administration, structured project case studies, analytics, technical SEO, AI-readable discovery and a performance-conscious 3D experience.
+**Migration status:** The source code now uses Firebase, and 1,258 Firestore documents plus the existing admin identity have been imported and verified in `portfolio-cb36f`. Existing repository images replace unavailable source uploads without a paid Storage plan. Older CVs were reviewed and remain unpublished pending updates. The website has not been redeployed; production needs Firebase server credentials. See [the Firebase migration runbook](docs/FIREBASE_MIGRATION.md) for setup, verification, and cutover steps.
+
+The platform combines a recruiter-oriented public portfolio with a Firebase-backed CMS, secure administration, structured project case studies, analytics, technical SEO, AI-readable discovery and a performance-conscious 3D experience.
 
 ---
 
@@ -93,7 +95,7 @@ No confidential customer, reservation, hotel-contract, invoice or private financ
 
 ### CMS and content governance
 
-- Supabase-backed content management
+- Firebase-backed content management
 - Published/unpublished content controls
 - CMS-authoritative production rendering
 - Repository fallback content for documented local-development mode
@@ -109,16 +111,16 @@ No confidential customer, reservation, hotel-contract, invoice or private financ
 
 ### Authentication and administration
 
-- Supabase email/password authentication
+- Firebase email/password authentication
 - GitHub OAuth
-- TOTP multi-factor authentication
+- Application-managed encrypted TOTP multi-factor authentication
 - Remembered-device flow
 - Password recovery
 - hCaptcha bot protection
 - Admin authorization
 - Protected CMS routes
 - POST-only logout
-- Supabase Row Level Security
+- Server authorization and Firebase client security rules
 - CSRF protection for sensitive mutations
 - Origin validation
 
@@ -191,17 +193,17 @@ No confidential customer, reservation, hotel-contract, invoice or private financ
 
 ### Platform and data
 
-- Supabase PostgreSQL
-- Supabase Auth
-- Supabase Storage
-- Supabase SSR
+- Cloud Firestore
+- Firebase Auth
+- Firebase Storage
+- Firebase Admin SDK and HTTP-only session cookies
 - Vercel
 
 ### Security and validation
 
 - hCaptcha
 - TOTP MFA
-- Row Level Security
+- Firebase security rules
 - Zod
 - CSRF protection
 - Origin validation
@@ -249,7 +251,7 @@ Operational routes under `/admin`, `/auth` and `/api` are excluded from public d
 
 - Node.js compatible with Next.js 16
 - npm
-- Supabase project for CMS/auth functionality
+- Firebase project for CMS/auth/storage functionality
 - hCaptcha configuration for protected authentication flows
 
 ### Installation
@@ -277,12 +279,18 @@ Use `.env.example` as the source of truth.
 Never commit production secrets.
 
 ```env
-# Public Supabase configuration
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Public Firebase configuration
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
 
-# Server-only Supabase secret
-SUPABASE_SERVICE_ROLE_KEY=
+# Server-only Firebase credentials (or Application Default Credentials)
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_MFA_ENCRYPTION_KEY=
+FIREBASE_GITHUB_CLIENT_ID=
+FIREBASE_GITHUB_CLIENT_SECRET=
 
 # Public CAPTCHA configuration
 NEXT_PUBLIC_CAPTCHA_PROVIDER=hcaptcha
@@ -316,7 +324,7 @@ NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
 
 ### Security rules
 
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be exposed to browser code.
+- `FIREBASE_PRIVATE_KEY` and all application secrets are server-only and must never be exposed to browser code.
 - `HCAPTCHA_SECRET_KEY` is server-only.
 - HMAC secrets must be independently generated from strong random material.
 - Preview deployments must remain non-indexable.
@@ -353,7 +361,7 @@ npm run analytics:verify
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run deterministic Vitest tests |
 | `npm run test:coverage` | Run tests with coverage thresholds |
-| `npm run test:integration` | Run isolated Supabase integration tests |
+| `npm run test:integration` | Run isolated Firebase emulator integration tests |
 | `npm run build` | Create a production build |
 | `npm run start` | Start the production server locally |
 | `npm run test:e2e` | Run browser and accessibility flows |
@@ -389,7 +397,7 @@ Discovery resources:
 
 The production application follows these rules:
 
-1. When Supabase is configured, published CMS content is authoritative.
+1. When Firebase is configured, published CMS content is authoritative.
 2. A valid empty CMS result remains empty.
 3. Unpublished content is never restored through fallback data.
 4. Discovery output fails closed when publication state cannot be trusted.
@@ -407,7 +415,7 @@ Security depends on:
 
 - Authentication
 - Authorization
-- Supabase RLS
+- Firebase rules and server authorization
 - MFA
 - CSRF protection
 - Origin checks
@@ -429,14 +437,15 @@ app/                 Next.js routes, layouts, metadata and route handlers
 components/          Public UI, admin UI, analytics, security and SEO components
 config/              Site-wide configuration
 constants/           Verified repository fallback content
-lib/                 CMS, Supabase, authentication, analytics and SEO utilities
+lib/                 CMS, Firebase, authentication, analytics and SEO utilities
 public/              Public images and static resources
 scripts/security/    Production security verification
 scripts/seo/         Technical SEO auditing
 scripts/content/     Public CMS/content auditing
 scripts/analytics/   Analytics-consent verification
 docs/                SEO, branding, security and operating documentation
-supabase/             Database migrations and Supabase assets
+firebase/             Firebase rules, index/TTL configuration
+supabase/             Historical source database migrations
 tests/                Unit, integration and behavior tests
 ```
 
@@ -449,7 +458,7 @@ The application is deployed on Vercel.
 Before a production release:
 
 1. Configure required environment variables.
-2. Configure Supabase authentication providers and redirect URLs.
+2. Configure Firebase authentication providers, action URLs and rules.
 3. Configure hCaptcha.
 4. Ensure preview deployments remain `noindex`.
 5. Run type-check, lint, tests and production build validation.

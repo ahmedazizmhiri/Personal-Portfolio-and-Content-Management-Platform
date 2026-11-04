@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseFirebaseAsset } from "@/lib/firebase/assets";
 
 import {
   cmsBlockTypes,
@@ -33,6 +34,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   password: passwordSchema,
+  oobCode: z.string().trim().min(1).max(2048),
 });
 
 export const contactSchema = z.object({
@@ -144,26 +146,12 @@ const isHttpsUrl = (value: string) => {
 
 const isInternalPath = isSafeInternalPath;
 
-const isConfiguredPublicAssetUrl = (value: string) => {
-  try {
-    const candidate = new URL(value);
-    const configured = new URL(
-      process.env.NEXT_PUBLIC_SUPABASE_URL
-      || process.env.SUPABASE_URL
-      || "",
-    );
-    return candidate.protocol === "https:"
-      && candidate.origin === configured.origin
-      && candidate.pathname.startsWith("/storage/v1/object/public/");
-  } catch {
-    return false;
-  }
-};
+const isConfiguredPublicAssetUrl = (value: string) => Boolean(parseFirebaseAsset(value, process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ?? ""));
 
 export const assetUrlSchema = z.string().trim().max(2048).refine(
   (value) =>
     !value || isInternalPath(value) || isConfiguredPublicAssetUrl(value),
-  "Enter a site path or a public asset URL from the configured Supabase project.",
+  "Enter a site path or a public asset URL from the configured Firebase Storage bucket.",
 );
 
 export const externalUrlSchema = z.string().trim().max(2048).refine(

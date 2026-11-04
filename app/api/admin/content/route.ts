@@ -20,8 +20,8 @@ import {
   isEditableCmsTable,
   validateCmsRow,
 } from "@/lib/security/validation";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
@@ -65,8 +65,8 @@ const mutationLimit = async (
 });
 
 const ensureRevisionStore = async () => {
-  const supabase = createSupabaseAdminClient();
-  const result = await supabase
+  const firebase = createFirebaseAdminClient();
+  const result = await firebase
     .from("cms_content_revisions")
     .select("id")
     .limit(1);
@@ -106,7 +106,7 @@ type AtomicBuilderMutation = {
   requestIds: string[];
 };
 
-type SupabaseMutationError = {
+type FirebaseMutationError = {
   code?: string | null;
   message?: string | null;
 };
@@ -224,7 +224,7 @@ const parseAtomicCmsMutation = (
   return result as AtomicCmsMutation;
 };
 
-const atomicMutationErrorResponse = (error: SupabaseMutationError) => {
+const atomicMutationErrorResponse = (error: FirebaseMutationError) => {
   switch (error.code) {
     case "CMS02":
       return jsonError(
@@ -325,8 +325,8 @@ const loadProjectSections = async (
   projectId: string,
   override?: ProjectContentOverride,
 ) => {
-  const supabase = createSupabaseAdminClient();
-  const sectionsResult = await supabase
+  const firebase = createFirebaseAdminClient();
+  const sectionsResult = await firebase
     .from("project_sections")
     .select("id,section_type,body,bullets,is_visible,is_archived")
     .eq("project_id", projectId);
@@ -343,7 +343,7 @@ const loadProjectSections = async (
 
   const itemsBySection = new Map<string, unknown[]>();
   if (sectionIds.length > 0) {
-    const itemsResult = await supabase
+    const itemsResult = await firebase
       .from("project_section_items")
       .select("id,project_section_id,label,value,description,is_visible")
       .in("project_section_id", sectionIds)
@@ -362,7 +362,7 @@ const loadProjectSections = async (
     }
   }
 
-    const mediaResult = await supabase
+    const mediaResult = await firebase
     .from("project_media")
     .select(
       "id,project_id,project_section_id,media_url,alt_text,caption,media_type,is_visible",
@@ -397,8 +397,8 @@ const loadProjectSections = async (
 };
 
 const loadPublishedProject = async (projectId: string) => {
-  const supabase = createSupabaseAdminClient();
-  const project = await supabase
+  const firebase = createFirebaseAdminClient();
+  const project = await firebase
     .from("projects")
 .select("id,slug,title,type,tags,tools,summary,description,cover_image_url,seo_title,seo_description,open_graph_image,status,published,github_url,linkedin_url,demo_url")    .eq("id", projectId)
     .maybeSingle();
@@ -438,8 +438,8 @@ const publishedPageLinkIssue = async (
   pageId: string,
   includeSectionId?: string,
 ) => {
-  const supabase = createSupabaseAdminClient();
-  const sections = await supabase
+  const firebase = createFirebaseAdminClient();
+  const sections = await firebase
     .from("page_sections")
     .select("id")
     .eq("page_id", pageId)
@@ -454,7 +454,7 @@ const publishedPageLinkIssue = async (
   ])];
   if (sectionIds.length === 0) return null;
 
-  const items = await supabase
+  const items = await firebase
     .from("page_section_items")
     .select("link_url")
     .in("page_section_id", sectionIds)
@@ -466,7 +466,7 @@ const publishedPageLinkIssue = async (
   );
   if (slugs.length === 0) return null;
 
-  const projects = await supabase
+  const projects = await firebase
     .from("projects")
     .select("slug,published,status")
     .in("slug", slugs);
@@ -486,8 +486,8 @@ const publishedPageLinkIssue = async (
 };
 
 const publicLinkToProjectIssue = async (slug: string) => {
-  const supabase = createSupabaseAdminClient();
-  const items = await supabase
+  const firebase = createFirebaseAdminClient();
+  const items = await firebase
     .from("page_section_items")
     .select("page_section_id")
     .in("link_url", [`/projects/${slug}`, `/projects/${slug}/`])
@@ -500,7 +500,7 @@ const publicLinkToProjectIssue = async (slug: string) => {
       : []);
   if (sectionIds.length === 0) return null;
 
-  const sections = await supabase
+  const sections = await firebase
     .from("page_sections")
     .select("page_id")
     .in("id", sectionIds)
@@ -512,7 +512,7 @@ const publicLinkToProjectIssue = async (slug: string) => {
     typeof section.page_id === "string" ? [section.page_id] : []);
   if (pageIds.length === 0) return null;
 
-  const pages = await supabase
+  const pages = await firebase
     .from("pages")
     .select("id")
     .in("id", pageIds)
@@ -547,7 +547,7 @@ const publicationIssue = async (
       return completeness.blockingIssues.join(" ");
     }
 
-    const supabase = createSupabaseAdminClient();
+    const firebase = createFirebaseAdminClient();
     const projectId = typeof row.id === "string" ? row.id : null;
     const orderedColumns = [
       ["projects_page_order", "projects-page order"],
@@ -558,7 +558,7 @@ const publicationIssue = async (
     for (const [column, label] of orderedColumns) {
       const value = row[column];
       if (typeof value !== "number" || !Number.isFinite(value)) continue;
-      let query = supabase
+      let query = firebase
         .from("projects")
         .select("id")
         .eq("published", true)
@@ -591,8 +591,8 @@ const publicationIssue = async (
     && row.is_archived !== true
     && typeof row.page_id === "string"
   ) {
-    const supabase = createSupabaseAdminClient();
-    const page = await supabase
+    const firebase = createFirebaseAdminClient();
+    const page = await firebase
       .from("pages")
       .select("is_published")
       .eq("id", row.page_id)
@@ -620,8 +620,8 @@ const publicationIssue = async (
     table === "project_section_items"
     && typeof row.project_section_id === "string"
   ) {
-    const supabase = createSupabaseAdminClient();
-    const section = await supabase
+    const firebase = createFirebaseAdminClient();
+    const section = await firebase
       .from("project_sections")
       .select("project_id")
       .eq("id", row.project_section_id)
@@ -651,8 +651,8 @@ const publicationIssue = async (
     const linkMatch = /^\/projects\/([^/?#]+)\/?$/.exec(row.link_url.trim());
     if (!linkMatch) return null;
 
-    const supabase = createSupabaseAdminClient();
-    const section = await supabase
+    const firebase = createFirebaseAdminClient();
+    const section = await firebase
       .from("page_sections")
       .select("page_id,is_visible,is_archived")
       .eq("id", row.page_section_id)
@@ -665,12 +665,12 @@ const publicationIssue = async (
     ) return null;
 
     const [page, project] = await Promise.all([
-      supabase
+      firebase
         .from("pages")
         .select("is_published")
         .eq("id", section.data.page_id)
         .maybeSingle(),
-      supabase
+      firebase
         .from("projects")
         .select("published,status")
         .eq("slug", linkMatch[1])
@@ -711,8 +711,8 @@ const deletionPublicationIssue = async (
     && typeof row.id === "string"
     && typeof row.project_section_id === "string"
   ) {
-    const supabase = createSupabaseAdminClient();
-    const section = await supabase
+    const firebase = createFirebaseAdminClient();
+    const section = await firebase
       .from("project_sections")
       .select("project_id")
       .eq("id", row.project_section_id)
@@ -751,8 +751,8 @@ const uploadAvailabilityIssue = async (
   const references = cmsUploadReferences(table, row);
   if (references.length === 0) return null;
 
-  const supabase = createSupabaseAdminClient();
-  const exactMatches = await supabase
+  const firebase = createFirebaseAdminClient();
+  const exactMatches = await firebase
     .from("uploads")
     .select("id")
     .in("public_url", references)
@@ -783,7 +783,7 @@ const uploadAvailabilityIssue = async (
     })).values(),
   ];
   for (const reference of storageReferences) {
-    const locationMatch = await supabase
+    const locationMatch = await firebase
       .from("uploads")
       .select("id")
       .eq("bucket", reference.bucket)
@@ -813,8 +813,8 @@ const uploadAvailabilityIssue = async (
 const duplicatedPageItemsUploadIssue = async (
   sectionId: string,
 ): Promise<UploadAvailabilityIssue | null> => {
-  const supabase = createSupabaseAdminClient();
-  const result = await supabase
+  const firebase = createFirebaseAdminClient();
+  const result = await firebase
     .from("page_section_items")
     .select(cmsSelectColumns("page_section_items"))
     .eq("page_section_id", sectionId)
@@ -843,7 +843,7 @@ export async function GET(request: Request) {
     sameOrigin: false,
   });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError(
       "CMS server configuration is incomplete.",
       500,
@@ -857,8 +857,8 @@ export async function GET(request: Request) {
     if (!isEditableCmsTable(table)) {
       return jsonError("Unknown CMS content table.", 400, "validation_error");
     }
-    const supabase = createSupabaseAdminClient();
-    const { data, error } = await supabase
+    const firebase = createFirebaseAdminClient();
+    const { data, error } = await firebase
       .from(table)
       .select(cmsSelectColumns(table))
       .limit(500);
@@ -872,7 +872,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError(
       "CMS server configuration is incomplete.",
       500,
@@ -913,8 +913,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const supabase = createSupabaseAdminClient();
-    const mutationResult = await supabase.rpc("mutate_cms_builder_action", {
+    const firebase = createFirebaseAdminClient();
+    const mutationResult = await firebase.rpc("mutate_cms_builder_action", {
       p_action: builderMutation.data.action,
       p_table: builderMutation.data.table,
       p_record_id: builderMutation.data.id,
@@ -1013,7 +1013,7 @@ export async function POST(request: Request) {
     return jsonError(publicationError, 409, "project_incomplete");
   }
 
-  const supabase = createSupabaseAdminClient();
+  const firebase = createFirebaseAdminClient();
   const id = typeof row.id === "string" ? row.id : null;
   const expected = expectedTimestamp(parsed.data);
 
@@ -1026,7 +1026,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await supabase
+    const existing = await firebase
       .from(table)
       .select(cmsSelectColumns(table))
       .eq("id", id)
@@ -1057,7 +1057,7 @@ export async function POST(request: Request) {
   const { id: ignoredId, ...mutationValues } = row;
   void ignoredId;
   const operation: CmsMutationOperation = id ? "update" : "create";
-  const mutationResult = await supabase.rpc("mutate_cms_content", {
+  const mutationResult = await firebase.rpc("mutate_cms_content", {
     p_table: table,
     p_operation: operation,
     p_record_id: id,
@@ -1108,7 +1108,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
-  if (!isSupabaseAdminConfigured()) {
+  if (!isFirebaseAdminConfigured()) {
     return jsonError(
       "CMS server configuration is incomplete.",
       500,
@@ -1142,8 +1142,8 @@ export async function DELETE(request: Request) {
   }
 
   const table = parsed.data.table;
-  const supabase = createSupabaseAdminClient();
-  const existing = await supabase
+  const firebase = createFirebaseAdminClient();
+  const existing = await firebase
     .from(table)
     .select(cmsSelectColumns(table))
     .eq("id", parsed.data.id)
@@ -1167,7 +1167,7 @@ export async function DELETE(request: Request) {
   const operation: CmsMutationOperation = archivableTables.has(table)
     ? "archive"
     : "delete";
-  const mutationResult = await supabase.rpc("mutate_cms_content", {
+  const mutationResult = await firebase.rpc("mutate_cms_content", {
     p_table: table,
     p_operation: operation,
     p_record_id: parsed.data.id,

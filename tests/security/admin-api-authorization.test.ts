@@ -7,18 +7,18 @@ const state = vi.hoisted(() => ({
   configured: true,
 }));
 
-vi.mock("@/lib/supabase/config", () => ({
+vi.mock("@/lib/firebase/config", () => ({
   adminDeviceHmacSecret: () => "admin-api-authorization-test-secret",
   adminMfaRememberDays: () => 10,
   getAllowedOrigins: () => ["https://portfolio.test"],
-  isSupabaseAdminConfigured: () => state.configured,
+  isFirebaseAdminConfigured: () => state.configured,
   requireAdminDeviceHmacSecret: () =>
     "admin-api-authorization-test-secret",
   requireAdminMfa: () => true,
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  createSupabaseServerClient: async () => ({
+vi.mock("@/lib/firebase/server", () => ({
+  createFirebaseServerClient: async () => ({
     auth: {
       getUser: async () =>
         state.authenticated
@@ -57,8 +57,8 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-vi.mock("@/lib/supabase/admin", () => ({
-  createSupabaseAdminClient: () => ({
+vi.mock("@/lib/firebase/admin", () => ({
+  createFirebaseAdminClient: () => ({
     from: (table: string) => ({
       select: () => {
         const query = {

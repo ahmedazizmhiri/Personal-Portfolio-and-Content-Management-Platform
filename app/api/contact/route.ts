@@ -1,6 +1,6 @@
 import { deliverContactNotification } from "@/lib/contact-delivery";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { isSupabaseAdminConfigured } from "@/lib/supabase/config";
+import { createFirebaseAdminClient } from "@/lib/firebase/admin";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 import { hmacSha256Hex } from "@/lib/security/crypto";
 import { assertSameOrigin, clientIp, jsonError, jsonOk, userAgent } from "@/lib/security/http";
 import { privacyHmacSecret } from "@/lib/security/privacy";
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isSupabaseAdminConfigured()) {
+    if (!isFirebaseAdminConfigured()) {
       return jsonError(
         "Message delivery is temporarily unavailable.",
         503,
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createSupabaseAdminClient();
+    const firebase = createFirebaseAdminClient();
     const privacySecret = privacyHmacSecret();
     if (!privacySecret) {
       return jsonError(
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const hash = (value: string | null) =>
       value ? hmacSha256Hex(value, privacySecret) : null;
 
-    const inserted = await supabase
+    const inserted = await firebase
       .from("contact_messages")
       .insert({
         submission_id: parsed.data.submissionId,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       .single();
 
     if (inserted.error?.code === "23505") {
-      const existing = await supabase
+      const existing = await firebase
         .from("contact_messages")
         .select("id")
         .eq("submission_id", parsed.data.submissionId)
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       entityId: inserted.data.id,
     });
 
-    await deliverContactNotification(inserted.data);
+    await deliverContactNotification({ id: inserted.data.id, name: inserted.data.name, email: inserted.data.email, message: inserted.data.message });
 
     const response = jsonOk(
       {

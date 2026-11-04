@@ -38,8 +38,8 @@ import {
 } from "@/lib/projects/project-workspace-validation";
 
 import {
-  createSupabaseAdminClient,
-} from "@/lib/supabase/admin";
+  createFirebaseAdminClient,
+} from "@/lib/firebase/admin";
 
 export const dynamic =
   "force-dynamic";
@@ -366,14 +366,14 @@ const mutationErrorResponse = (
 };
 
 const loadProject = async (
-  supabase:
+  firebase:
     ReturnType<
-      typeof createSupabaseAdminClient
+      typeof createFirebaseAdminClient
     >,
   projectId: string,
 ) => {
   const result =
-    await supabase
+    await firebase
       .from("projects")
             .select(
         "id,slug,status,published,deletion_status,deletion_requested_at,deletion_error_code,updated_at",
@@ -408,9 +408,9 @@ const loadProject = async (
 
 const loadPendingInventory =
   async (
-    supabase:
+    firebase:
       ReturnType<
-        typeof createSupabaseAdminClient
+        typeof createFirebaseAdminClient
       >,
     projectId: string,
   ): Promise<{
@@ -419,7 +419,7 @@ const loadPendingInventory =
       null;
   }> => {
     const projectLinks =
-      await supabase
+      await firebase
         .from(
           "project_uploads",
         )
@@ -477,7 +477,7 @@ const loadPendingInventory =
       referencesResult,
     ] =
       await Promise.all([
-                supabase
+                firebase
           .from("uploads")
           .select(
             "id,bucket,path,public_url,mime_type,deletion_status",
@@ -487,7 +487,7 @@ const loadPendingInventory =
             uploadIds,
           ),
 
-        supabase
+        firebase
           .from(
             "project_uploads",
           )
@@ -646,9 +646,9 @@ const hardDeleteReferenceFields:
 
 const hasExternalCmsReference =
   async (
-    supabase:
+    firebase:
       ReturnType<
-        typeof createSupabaseAdminClient
+        typeof createFirebaseAdminClient
       >,
     projectId: string,
     candidates: string[],
@@ -669,7 +669,7 @@ const hasExternalCmsReference =
         fields
       ) {
         const baseQuery =
-          supabase
+          firebase
             .from(table)
             .select("id")
             .in(
@@ -728,15 +728,15 @@ const hasExternalCmsReference =
   };
 
 const markFailed = async ({
-  supabase,
+  firebase,
   projectId,
   actorUserId,
   errorCode,
   request,
 }: {
-  supabase:
+  firebase:
     ReturnType<
-      typeof createSupabaseAdminClient
+      typeof createFirebaseAdminClient
     >;
 
   projectId: string;
@@ -751,7 +751,7 @@ const markFailed = async ({
     Request;
 }) => {
   const result =
-    await supabase.rpc(
+    await firebase.rpc(
       "mark_project_hard_delete_failed",
       {
         p_project_id:
@@ -936,12 +936,12 @@ export async function DELETE(
     );
   }
 
-  const supabase =
-    createSupabaseAdminClient();
+  const firebase =
+    createFirebaseAdminClient();
 
   const loaded =
     await loadProject(
-      supabase,
+      firebase,
       projectId,
     );
 
@@ -1022,7 +1022,7 @@ export async function DELETE(
 
     const inventory =
       await loadPendingInventory(
-        supabase,
+        firebase,
         projectId,
       );
 
@@ -1031,7 +1031,7 @@ export async function DELETE(
 
     if (!uploads) {
       await markFailed({
-        supabase,
+        firebase,
         projectId,
         actorUserId:
           admin.user.id,
@@ -1048,7 +1048,7 @@ export async function DELETE(
     }
   } else {
     const prepared =
-      await supabase.rpc(
+      await firebase.rpc(
         "prepare_project_hard_delete",
         {
           p_project_id:
@@ -1119,7 +1119,7 @@ export async function DELETE(
         rawUploads.length
     ) {
       await markFailed({
-        supabase,
+        firebase,
         projectId,
         actorUserId:
           admin.user.id,
@@ -1217,7 +1217,7 @@ export async function DELETE(
     errorCode: string,
   ) => {
     await markFailed({
-      supabase,
+      firebase,
       projectId,
       actorUserId:
         admin.user.id,
@@ -1249,7 +1249,7 @@ export async function DELETE(
     }
 
         const current =
-      await supabase
+      await firebase
         .from("uploads")
         .select(
           "id,bucket,path,public_url,deletion_status",
@@ -1348,7 +1348,7 @@ export async function DELETE(
 
     const externalReference =
       await hasExternalCmsReference(
-        supabase,
+        firebase,
         projectId,
         candidates,
       );
@@ -1377,7 +1377,7 @@ export async function DELETE(
     }
 
     const removed =
-      await supabase
+      await firebase
         .storage
         .from(bucket)
         .remove([
@@ -1396,7 +1396,7 @@ export async function DELETE(
     }
 
     const deleted =
-      await supabase
+      await firebase
         .from("uploads")
         .delete()
         .eq(
@@ -1433,7 +1433,7 @@ export async function DELETE(
       !deleted.data
     ) {
       const stillExists =
-        await supabase
+        await firebase
           .from("uploads")
           .select("id")
           .eq(
@@ -1461,7 +1461,7 @@ export async function DELETE(
   }
 
   const finalized =
-    await supabase.rpc(
+    await firebase.rpc(
       "finalize_project_hard_delete",
       {
         p_project_id:
@@ -1499,7 +1499,7 @@ export async function DELETE(
       "deleted"
   ) {
     const remaining =
-      await supabase
+      await firebase
         .from("projects")
         .select("id")
         .eq(

@@ -161,7 +161,7 @@ test("contact form reports client validation errors without submitting", async (
 }) => {
   await page.goto("/contact");
   const name = page.getByLabel("Name");
-  const email = page.getByLabel("Email");
+  const email = page.getByRole("textbox", { name: "Email", exact: true });
   const message = page.getByLabel("Message");
   await expect(name).toHaveAttribute("required", "");
   await expect(email).toHaveAttribute("required", "");

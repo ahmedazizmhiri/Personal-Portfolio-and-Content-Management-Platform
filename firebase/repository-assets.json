@@ -1,0 +1,18 @@
+{
+  "description": "Approved use of existing site assets while unavailable uploads and outdated CVs remain archived.",
+  "replacements": {
+    "26fa6d92-00da-4364-b816-c314ede6d5b0": "/companies/sunshine-vacances.png",
+    "ee39da59-3499-4e27-9255-37f210446634": "/companies/vermeg.png",
+    "384fbc6e-50cf-400e-a883-70be12a0cd55": "/companies/arabsoft.png",
+    "4ae75ddc-b5c0-4e35-b27c-d8fe4fbcd0e7": "/companies/el-mouradi.png",
+    "6199dd14-2c5d-4069-9e39-622bbaff994f": "/companies/chicchac.webp",
+    "13948050-4e5e-4b51-a8bf-b79476699ef0": "/hero-bg.svg",
+    "02cd57ba-dcc9-4611-a58c-6d5ebf7a512c": "/hero-bg.svg",
+    "d92b494a-3d42-4bbb-9640-2234925ff6db": "/logo.png",
+    "e51a90b7-0288-4d9a-814a-6297075908d2": "/hero-bg.svg",
+    "70bf66b9-a7d0-4bfc-8b46-f615341b708a": "",
+    "f121f3bf-5926-48e9-b8ff-ecf8f25fcf9f": "",
+    "1cd172aa-5b09-45f4-9803-fda4f9c9f4ed": ""
+  },
+  "unpublishResumes": true
+}

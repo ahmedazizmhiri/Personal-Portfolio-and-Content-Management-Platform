@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAdminAuthState } from "@/lib/security/admin-auth";
 import { jsonOk } from "@/lib/security/http";
-import { requireAdminMfa } from "@/lib/supabase/config";
+import { requireAdminMfa } from "@/lib/firebase/config";
 
 export const dynamic = "force-dynamic";
 
