@@ -67,20 +67,19 @@ export const contentMutationSchema = z.object({
   values: z.record(z.string(), z.unknown()).optional(),
   rows: z.array(z.record(z.string(), z.unknown())).optional(),
   id: z.string().optional(),
-  expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
+  // An existing Firestore timestamp is a concurrency token. Some migrated rows
+  // contain legacy non-ISO text: match it exactly rather than rejecting a save.
+  expectedUpdatedAt: z.string().min(1).max(128).optional(),
 }).strict();
 
 export const builderCompoundMutationSchema = z.object({
   action: z.enum(["duplicate", "move"]),
   table: z.enum(["page_sections", "project_sections"]),
   id: z.string().uuid(),
-  expectedUpdatedAt: z.string().datetime({ offset: true }),
+  expectedUpdatedAt: z.string().min(1).max(128),
   idempotencyKey: z.string().uuid().optional(),
   relatedId: z.string().uuid().optional(),
-  relatedExpectedUpdatedAt: z
-    .string()
-    .datetime({ offset: true })
-    .optional(),
+  relatedExpectedUpdatedAt: z.string().min(1).max(128).optional(),
   direction: z.enum(["up", "down"]).optional(),
 }).strict().superRefine((value, context) => {
   if (value.action === "duplicate") {

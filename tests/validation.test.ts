@@ -1,6 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { assetUrlSchema } from "@/lib/security/validation";
+import { assetUrlSchema, contentMutationSchema, builderCompoundMutationSchema } from "@/lib/security/validation";
+
+describe("legacy CMS optimistic-lock timestamps", () => {
+  it("accepts historical text as a concurrency token but never an empty token", () => {
+    expect(contentMutationSchema.safeParse({
+      table: "resumes", values: { label: "CV", variant: "en" },
+      expectedUpdatedAt: "2026-11-04 08:00:00",
+    }).success).toBe(true);
+    expect(contentMutationSchema.safeParse({
+      table: "resumes", values: {}, expectedUpdatedAt: "",
+    }).success).toBe(false);
+  });
+  it("accepts a historical timestamp for a builder operation", () => {
+    expect(builderCompoundMutationSchema.safeParse({
+      action: "duplicate", table: "project_sections",
+      id: "9304053f-445d-45a7-bf74-a95a8148c101",
+      idempotencyKey: "74e4a348-7b4b-4cc5-ae9a-1d38cf088e40",
+      expectedUpdatedAt: "2026-11-04 08:00:00",
+    }).success).toBe(true);
+  });
+});
 
 describe("internal CMS URL validation", () => {
   beforeEach(() => {

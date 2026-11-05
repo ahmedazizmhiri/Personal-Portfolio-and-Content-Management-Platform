@@ -21,7 +21,17 @@ const find = (state: ContentState, table: string, id: unknown) => state[table]?.
 const lock = (row: Row | undefined, expected: unknown) => {
   if (!row) fail("CMS03", "cms_content_not_found");
   if (!expected) fail("CMS01", "cms_optimistic_lock_required");
-  if (Date.parse(row!.updated_at) !== Date.parse(String(expected))) fail("CMS02", "cms_edit_conflict");
+  // Preserve optimistic locking for migrated, non-ISO timestamps. NaN !== NaN
+  // would otherwise make the historical rows impossible to edit. After saving,
+  // stamp() writes a normal ISO updated_at, preserving created_at unchanged.
+  const stored = typeof row?.updated_at === "string" ? row?.updated_at : "";
+  const supplied = typeof expected === "string" ? expected : "";
+  const storedTime = Date.parse(stored);
+  const suppliedTime = Date.parse(supplied);
+  const matches = Number.isFinite(storedTime) && Number.isFinite(suppliedTime)
+    ? storedTime === suppliedTime
+    : Boolean(stored && supplied && stored === supplied);
+  if (!matches) fail("CMS02", "cms_edit_conflict");
   return row!;
 };
 const replace = (state: ContentState, table: string, next: Row) => {

@@ -253,6 +253,13 @@ const atomicMutationErrorResponse = (error: FirebaseMutationError) => {
         "project_link_conflict",
       );
     case "CMS07":
+      if (error.message === "cms_upload_unavailable") {
+        return jsonError("A referenced upload is pending deletion or unavailable. Restore or replace it before saving.", 409, "upload_unavailable");
+      }
+      if (error.message === "cms_use_slug_rename") {
+        return jsonError("Rename project slugs using the dedicated rename action.", 409, "slug_rename_required");
+      }
+      return jsonError("Invalid CMS mutation.", 400, "validation_error");
     case "22023":
     case "22P02":
     case "23514":
@@ -975,11 +982,14 @@ export async function POST(request: Request) {
   }
 
   const parsed = contentMutationSchema.safeParse(body);
-  if (
-    !parsed.success
-    || !parsed.data.values
-    || !isEditableCmsTable(parsed.data.table)
-  ) {
+  if (!parsed.success) {
+    return jsonError(
+      parsed.error.issues[0]?.message ?? "Invalid CMS mutation.",
+      400,
+      "validation_error",
+    );
+  }
+  if (!parsed.data.values || !isEditableCmsTable(parsed.data.table)) {
     return jsonError("Invalid CMS mutation.", 400, "validation_error");
   }
   if (!(await ensureRevisionStore())) {
