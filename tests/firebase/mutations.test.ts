@@ -20,6 +20,25 @@ describe("Firestore CMS transaction behavior", () => {
     expect(state.cms_content_revisions).toHaveLength(1);
     expect(state.cms_content_revisions[0]).toMatchObject({ actor_user_id: "admin", previous_values: { title: "Example" }, next_values: { title: "Changed title" } });
   });
+  it("saves a legacy timestamp while preserving the historical creation date", () => {
+    const state = initialState();
+    const legacyUpdated = "2026-11-04 08:00:00";
+    const legacyCreated = "2020-06-10 11:15:00";
+    state.projects[0].updated_at = legacyUpdated;
+    state.projects[0].created_at = legacyCreated;
+    const result = change(state, { p_expected_updated_at: legacyUpdated });
+    expect(result.row.title).toBe("Changed title");
+    expect(state.projects[0].created_at).toBe(legacyCreated);
+    expect(state.projects[0].updated_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(Number.isFinite(Date.parse(state.projects[0].updated_at))).toBe(true);
+    expect(() => change(state, { p_expected_updated_at: legacyUpdated })).toThrowError("cms_edit_conflict");
+  });
+  it("compares unparseable legacy timestamps exactly", () => {
+    const state = initialState();
+    state.projects[0].updated_at = "legacy-source-timestamp";
+    expect(() => change(state, { p_expected_updated_at: "other-legacy-timestamp" })).toThrowError("cms_edit_conflict");
+    expect(() => change(state, { p_expected_updated_at: "legacy-source-timestamp" })).not.toThrow();
+  });
   it("rejects stale edits and unauthorized actors", () => {
     expect(() => change(initialState(), { p_expected_updated_at: "2026-11-03T08:00:00.000Z" })).toThrowError("cms_edit_conflict");
     expect(() => change(initialState(), { p_actor_user_id: "visitor" })).toThrowError("cms_invalid_actor");

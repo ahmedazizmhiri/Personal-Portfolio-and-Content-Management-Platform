@@ -25,6 +25,7 @@ const googleSources = analyticsEnabled
     ]
   : [];
 const firebaseStorageOrigin = firebaseStorageBucket ? "https://firebasestorage.googleapis.com" : "";
+const blobPublicOrigin = "https://*.public.blob.vercel-storage.com";
 const firebaseImagePatterns = firebaseStorageBucket ? [{
   protocol: "https", hostname: "firebasestorage.googleapis.com", port: "",
   pathname: `/v0/b/${encodeURIComponent(firebaseStorageBucket)}/o/**`,
@@ -63,13 +64,14 @@ const imageSources = [
   "data:",
   "blob:",
   firebaseStorageOrigin,
+  blobPublicOrigin,
   ...googleSources,
   ...claritySources,
 ]
   .filter(Boolean)
   .join(" ");
 
-const mediaSources = ["'self'", "blob:", firebaseStorageOrigin]
+const mediaSources = ["'self'", "blob:", firebaseStorageOrigin, blobPublicOrigin]
   .filter(Boolean)
   .join(" ");
 
@@ -142,7 +144,7 @@ const nextConfig = {
     // The portfolio's fill images top out near 405px. Adding a 384px device
     // candidate prevents small cards/avatars from jumping straight to 640px.
     deviceSizes: [384, 640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    remotePatterns: firebaseImagePatterns,
+    remotePatterns: [...firebaseImagePatterns, { protocol: "https", hostname: "**.public.blob.vercel-storage.com", port: "", pathname: "/**" }],
   },
   outputFileTracingIncludes: {
     "/api/admin/upload": [

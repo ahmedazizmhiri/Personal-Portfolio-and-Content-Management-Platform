@@ -37,14 +37,14 @@ const filters: { value: MediaFilter; label: string }[] = [
   { value: "public-assets", label: "Public assets" },
   { value: "project-images", label: "Project images" },
   { value: "resumes", label: "Resumes" },
-  { value: "uploads", label: "Private uploads" },
+  { value: "uploads", label: "Private uploads (disabled)" },
 ];
 
 const bucketNotes: { bucket: UploadBucket; title: string; description: string }[] = [
   { bucket: "public-assets", title: "Public assets", description: "Profile avatars, logos, certification images and general public images." },
   { bucket: "project-images", title: "Project images", description: "Project cover images and project artwork." },
   { bucket: "resumes", title: "Resumes", description: "Public PDF and DOCX CV files." },
-  { bucket: "uploads", title: "Private uploads", description: "CMS-only files. This bucket does not return a public URL and cannot be selected for public fields." },
+  { bucket: "uploads", title: "Private uploads", description: "Unavailable: this store is public. Never upload confidential documents here." },
 ];
 
 const formatBytes = (bytes: number | null) => {
@@ -268,7 +268,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
           <label className="grid gap-2 text-sm text-gray-300">
             <span>Storage bucket</span>
             <select value={bucket} onChange={(event) => setBucket(event.target.value as UploadBucket)} className={inputClass}>
-              {bucketNotes.map((note) => <option key={note.bucket} value={note.bucket}>{note.title}</option>)}
+              {bucketNotes.filter((note) => note.bucket !== "uploads").map((note) => <option key={note.bucket} value={note.bucket}>{note.title}</option>)}
             </select>
           </label>
           <label className="grid min-w-0 gap-2 text-sm text-gray-300">
@@ -291,7 +291,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
             {uploading ? "Uploading..." : "Upload"}
           </button>
         </div>
-        <p className="mt-3 text-xs text-gray-500">Accepted: JPG, PNG, WebP, PDF and DOCX, up to 10 MB. Choose the bucket that matches how the file will be used.</p>
+        <p className="mt-3 text-xs text-gray-500">Accepted: JPG, PNG, WebP, PDF and DOCX, up to 4 MB. Public files only: anyone with the URL can access them. Do not upload personal or confidential documents.</p>
       </form> : <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-gray-300">Assets are served with the site. Choose an existing file below, or add new files to the project&apos;s public directory and redeploy.</p>}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -352,7 +352,7 @@ export function MediaLibrary({ initialUploads, request }: MediaLibraryProps) {
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Bucket:</dt><dd className="min-w-0 truncate font-mono" title={asset.bucket}>{asset.bucket}</dd></div>
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Type:</dt><dd className="min-w-0 truncate" title={asset.mime_type ?? undefined}>{asset.mime_type ?? "Unknown"}</dd></div>
                   <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Size:</dt><dd>{formatBytes(asset.size_bytes)}</dd></div>
-                  <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Source:</dt><dd>{isBuiltIn ? "Built-in file" : "Firebase Storage"}</dd></div>
+                  <div className="flex gap-2"><dt className="shrink-0 text-gray-500">Source:</dt><dd>{isBuiltIn ? "Built-in file" : "Vercel Blob"}</dd></div>
                   {!isBuiltIn && deletionStatus !== "active" && (
                     <div className="flex gap-2">
                       <dt className="shrink-0 text-gray-500">Deletion:</dt>

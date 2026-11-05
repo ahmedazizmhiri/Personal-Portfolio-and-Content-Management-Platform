@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
   writeAdminAudit: vi.fn(),
 }));
 
+vi.mock("@vercel/blob", () => ({ del: state.storageRemove, put: vi.fn() }));
+
 vi.mock("@/lib/security/admin-auth", () => ({
   requireAdminApi: async () => ({
     ok: true,
@@ -119,7 +121,7 @@ vi.mock("@/lib/firebase/admin", () => ({
 
 const id = "87f06b62-2e8c-4a1e-b0ee-330f59676520";
 const publicUrl =
-  "https://project.firebase.co/storage/v1/object/public/project-images/admin/asset.webp";
+  "https://portfolio.public.blob.vercel-storage.com/project-images/admin/asset.webp";
 
 const uploadRow = (
   status: UploadRow["deletion_status"],
@@ -211,7 +213,7 @@ describe("two-phase admin upload deletion", () => {
       phase: "deleted",
       id,
     });
-    expect(state.storageRemove).toHaveBeenCalledWith(["admin/asset.webp"]);
+    expect(state.storageRemove).toHaveBeenCalledWith(publicUrl);
     expect(state.row).toBeNull();
   });
 });

@@ -2,10 +2,11 @@ import { createHash, randomUUID } from "crypto";
 import { readdir, stat } from "node:fs/promises";
 import { basename, extname, join, sep } from "node:path";
 import { z } from "zod";
+import { put, del } from "@vercel/blob";
 
 import type { UploadBucket, UploadRecord } from "@/lib/cms-types";
 import { createFirebaseAdminClient } from "@/lib/firebase/admin";
-import { isFirebaseAdminConfigured, isFirebaseStorageConfigured } from "@/lib/firebase/config";
+import { isFirebaseAdminConfigured } from "@/lib/firebase/config";
 import { requireAdminApi, writeAdminAudit } from "@/lib/security/admin-auth";
 import { clientIp, jsonError, jsonOk } from "@/lib/security/http";
 import { consumeRateLimit, rateLimitResponse } from "@/lib/security/rate-limit";
@@ -34,7 +35,18 @@ const allowedMimeByExt: Record<string, string[]> = {
 };
 
 const publicBuckets = new Set(["public-assets", "project-images", "resumes"]);
-const maxFileSize = 10 * 1024 * 1024;
+const blobEnabled = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
+const isBlobUrl = (value: unknown) => {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && (
+      url.hostname.endsWith(".public.blob.vercel-storage.com")
+      || url.hostname.endsWith(".blob.vercel-storage.com")
+    );
+  } catch { return false; }
+};
+const maxFileSize = 4 * 1024 * 1024;
 const uploadFields = "id,bucket,path,public_url,mime_type,size_bytes,original_name,uploaded_by,created_at,sha256,deletion_status,deletion_requested_at,deletion_error_code";
 
 const uploadListSchema = z.object({
@@ -151,14 +163,14 @@ export async function GET(request: Request) {
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
     .slice(0, parsed.data.limit);
 
-  return jsonOk({ uploads, storageEnabled: isFirebaseStorageConfigured() });
+  return jsonOk({ uploads, storageEnabled: blobEnabled() });
 }
 
 export async function POST(request: Request) {
   const admin = await requireAdminApi(request, { requireMfa: true });
   if (!admin.ok) return admin.response;
   if (!isFirebaseAdminConfigured()) return jsonError("CMS server configuration is incomplete.", 500, "server_error");
-  if (!isFirebaseStorageConfigured()) return jsonError("Cloud uploads are not enabled. Choose an existing site asset or add files to the project and redeploy.", 409, "storage_not_enabled");
+  if (!blobEnabled()) return jsonError("Vercel Blob is not connected. Add a public Blob store to this Vercel project.", 409, "storage_not_enabled");
 
   const limited = await consumeRateLimit({
     scope: "admin_upload",
@@ -169,7 +181,7 @@ export async function POST(request: Request) {
   if (!limited.allowed) return rateLimitResponse(limited);
 
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declaredLength) && declaredLength > 11 * 1024 * 1024) {
+  if (Number.isFinite(declaredLength) && declaredLength > 4.4 * 1024 * 1024) {
     return jsonError("Upload request is too large.", 413, "payload_too_large");
   }
 
@@ -204,6 +216,9 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!publicBuckets.has(bucket)) {
+    return jsonError("Private documents cannot be uploaded to this public Blob store.", 409, "private_storage_not_enabled");
+  }
   const digest = createHash("sha256").update(buffer).digest("hex");
   const path = `${admin.user.id}/${randomUUID()}.${validation.extension}`;
   const firebase = createFirebaseAdminClient();
@@ -230,24 +245,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const uploaded = await firebase.storage.from(bucket).upload(path, buffer, {
-    contentType: fileValue.type,
-    upsert: false,
-  });
-
-  if (uploaded.error) {
-    return jsonError("Upload failed.", 500, "server_error");
+  // The UUID path is never reused, even for replacements. Blob access stays server-side.
+  let uploaded: Awaited<ReturnType<typeof put>>;
+  try {
+    uploaded = await put(`${bucket}/${path}`, buffer, {
+      access: "public",
+      addRandomSuffix: false,
+      allowOverwrite: false,
+      contentType: fileValue.type,
+    });
+  } catch {
+    return jsonError("Vercel Blob upload failed. Check storage connection and quotas.", 503, "blob_upload_failed");
   }
-
-  const publicUrl = publicBuckets.has(bucket)
-    ? firebase.storage.from(bucket).getPublicUrl(uploaded.data.path).data.publicUrl
-    : null;
+  const publicUrl = uploaded.url;
 
   const { data, error } = await firebase
     .from("uploads")
     .insert({
       bucket,
-      path: uploaded.data.path,
+      path: uploaded.pathname,
       public_url: publicUrl,
       mime_type: fileValue.type,
       size_bytes: fileValue.size,
@@ -260,7 +276,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    await firebase.storage.from(bucket).remove([uploaded.data.path]);
+    await del(uploaded.url).catch(() => undefined);
     return jsonError("Upload metadata could not be saved.", 500, "server_error");
   }
 
@@ -471,10 +487,16 @@ export async function DELETE(request: Request) {
     });
   }
 
-  const removed = await firebase.storage
-    .from(bucketParsed.data)
-    .remove([existing.data.path]);
-  if (removed.error) {
+  // Never delete historical Firebase Storage objects using Blob credentials.
+  const ownedBlob = isBlobUrl(existing.data.public_url);
+  if (!ownedBlob) {
+    await firebase.from("uploads").update({ deletion_status: "failed", deletion_error_code: "legacy_storage_unsupported" })
+      .eq("id", existing.data.id).eq("deletion_error_code", reconciliationClaim);
+    return jsonError("Historical storage object: manual reconciliation required.", 409, "legacy_storage_unsupported");
+  }
+  let removeFailed = false;
+  try { await del(existing.data.public_url); } catch { removeFailed = true; }
+  if (removeFailed) {
     await firebase
       .from("uploads")
       .update({
