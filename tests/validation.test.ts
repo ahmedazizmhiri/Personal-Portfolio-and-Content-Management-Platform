@@ -28,6 +28,7 @@ describe("internal CMS URL validation", () => {
   it.each([
     "/projects/commercial-analytics",
     "/assets/report.webp",
+    "https://portfolio.public.blob.vercel-storage.com/resumes/cv.pdf",
     "https://firebasestorage.googleapis.com/v0/b/demo-portfolio.firebasestorage.app/o/public-assets%2Freport.webp?alt=media",
     "",
   ])("accepts safe asset URL %s", (value) => {
@@ -35,8 +36,8 @@ describe("internal CMS URL validation", () => {
   });
 
   it("rejects external asset hosts that the CSP would block", () => {
-    expect(
-      assetUrlSchema.safeParse("https://example.com/asset.webp").success,
-    ).toBe(false);
+    expect(assetUrlSchema.safeParse("https://example.com/asset.webp").success).toBe(false);
+    expect(assetUrlSchema.safeParse("https://portfolio.public.blob.vercel-storage.com.evil.example.com/image.webp").success).toBe(false);
+    expect(assetUrlSchema.safeParse("http://portfolio.public.blob.vercel-storage.com/image.webp").success).toBe(false);
   });
 });

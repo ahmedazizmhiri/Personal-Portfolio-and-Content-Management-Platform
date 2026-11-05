@@ -146,12 +146,22 @@ const isHttpsUrl = (value: string) => {
 
 const isInternalPath = isSafeInternalPath;
 
-const isConfiguredPublicAssetUrl = (value: string) => Boolean(parseFirebaseAsset(value, process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ?? ""));
+const isVercelPublicBlobUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.port
+      && /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/.test(url.hostname)
+      && url.pathname.length > 1;
+  } catch { return false; }
+};
+const isConfiguredPublicAssetUrl = (value: string) =>
+  Boolean(parseFirebaseAsset(value, process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ?? ""))
+  || isVercelPublicBlobUrl(value);
 
 export const assetUrlSchema = z.string().trim().max(2048).refine(
   (value) =>
     !value || isInternalPath(value) || isConfiguredPublicAssetUrl(value),
-  "Enter a site path or a public asset URL from the configured Firebase Storage bucket.",
+  "Enter a site path or a public Firebase/Vercel Blob asset URL.",
 );
 
 export const externalUrlSchema = z.string().trim().max(2048).refine(

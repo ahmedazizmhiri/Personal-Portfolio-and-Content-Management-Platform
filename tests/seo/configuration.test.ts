@@ -24,11 +24,13 @@ describe("public SEO configuration", () => {
     );
   });
 
-  it("restricts optimized remote images to the configured Firebase Storage bucket", () => {
+  it("restricts optimized remote images to Firebase Storage and public Vercel Blob", () => {
     const nextConfig = readRepositoryFile("next.config.js");
     expect(nextConfig).toContain('hostname: "firebasestorage.googleapis.com"');
     expect(nextConfig).toContain('encodeURIComponent(firebaseStorageBucket)');
-    expect(nextConfig).toContain('remotePatterns: firebaseImagePatterns');
+    expect(nextConfig).toContain('remotePatterns: [...firebaseImagePatterns,');
+    expect(nextConfig).toContain('hostname: "**.public.blob.vercel-storage.com"');
+    expect(nextConfig).toContain('const blobPublicOrigin = "https://*.public.blob.vercel-storage.com"');
   });
 
   it("keeps fallback profile URLs in one shared identity configuration", () => {
